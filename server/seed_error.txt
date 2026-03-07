@@ -1,0 +1,9 @@
+TypeError: next is not a function
+    at model.<anonymous> (D:\rewatporoject\server\models\User.js:34:5)
+    at async Kareem.execPre (D:\rewatporoject\server\node_modules\kareem\index.js:70:24)
+    at async model.$__save (D:\rewatporoject\server\node_modules\mongoose\lib\model.js:376:5)
+    at async model.save (D:\rewatporoject\server\node_modules\mongoose\lib\model.js:642:5)
+    at async D:\rewatporoject\server\node_modules\mongoose\lib\model.js:2778:9
+    at async Promise.all (index 0)
+    at async Function.create (D:\rewatporoject\server\node_modules\mongoose\lib\model.js:2763:11)
+    at async seedDB (D:\rewatporoject\server\seed.js:37:29)
