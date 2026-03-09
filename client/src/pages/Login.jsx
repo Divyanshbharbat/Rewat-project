@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, GraduationCap } from 'lucide-react';
+import loginImage from './image.png';
 
 const Login = () => {
     const [role, setRole] = useState('Teacher');
@@ -57,7 +58,7 @@ const Login = () => {
                 }}>
                     {/* Placeholder for Illustration */}
                     <div style={{ textAlign: 'center' }}>
-                        <img src="https://cdni.iconscout.com/illustration/premium/thumb/online-education-illustration-download-in-svg-png-gif-file-formats--e-learning-digital-study-course-pack-student-people-illustrations-5211068.png"
+                        <img src={loginImage}
                             alt="Education"
                             style={{ width: '100%', height: 'auto' }}
                         />
