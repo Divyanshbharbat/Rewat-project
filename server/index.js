@@ -16,6 +16,19 @@ app.use('/api/auth', require('./routes/auth.js'));
 app.use('/api/admin', require('./routes/adminRoutes.js'));
 app.use('/api/teacher', require('./routes/teacherRoutes.js'));
 app.use('/api/student', require('./routes/studentRoutes.js'));
+
+// New models routes
+app.use('/api/students', require('./routes/students.js'));
+app.use('/api/teachers', require('./routes/teachers.js'));
+app.use('/api/classes', require('./routes/classes.js'));
+app.use('/api/reports', require('./routes/reports.js'));
+app.use('/api/settings', require('./routes/settings.js'));
+
+// Teacher Portal Routes
+app.use('/api/attendance', require('./routes/attendanceRoutes.js'));
+app.use('/api/grades', require('./routes/gradeRoutes.js'));
+app.use('/api/assignments', require('./routes/assignmentRoutes.js'));
+app.use('/api/messages', require('./routes/messageRoutes.js'));
 app.get('/', (req, res) => {
     res.send('SchoolERP API is running...');
 });

@@ -25,7 +25,6 @@ const Sidebar = ({ role }) => {
             { icon: <Users size={20} />, label: 'Students', path: '/admin/students' },
             { icon: <UserRound size={20} />, label: 'Teachers', path: '/admin/teachers' },
             { icon: <BookOpen size={20} />, label: 'Classes', path: '/admin/classes' },
-            { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/admin/attendance' },
             { icon: <BarChart3 size={20} />, label: 'Reports', path: '/admin/reports' },
             { icon: <Settings size={20} />, label: 'Settings', path: '/admin/settings' },
         ],
