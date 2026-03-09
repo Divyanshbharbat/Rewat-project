@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, Download, User, ChevronRight } from 'lucide-react';
 import API from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import html2pdf from 'html2pdf.js';
 
 const Schedule = () => {
     const { user } = useAuth();
@@ -25,13 +26,57 @@ const Schedule = () => {
         }
     };
 
+    const handleDownloadPDF = () => {
+        const element = document.getElementById('schedule-report');
+        const opt = {
+            margin: [0.5, 0.5],
+            filename: `${user?.name || 'Student'}_Schedule.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        // New way to handle the buttons and sidebar being ignored
+        const buttons = element.querySelectorAll('.no-print');
+        buttons.forEach(b => b.style.display = 'none');
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            buttons.forEach(b => b.style.display = 'flex');
+        });
+    };
+
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading schedule...</div>;
 
     // Grouping by day (Mock grouping for demo purposes as shown in screenshot)
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
     return (
-        <div>
+        <div className="schedule-container" id="schedule-report">
+            <style>
+                {`
+                @media print {
+                    .sidebar, button, .no-print {
+                        display: none !important;
+                    }
+                    body {
+                        padding: 0 !important;
+                        background: white !important;
+                    }
+                    main {
+                        padding: 0 !important;
+                        margin: 0 !important;
+                    }
+                    .premium-card {
+                        box-shadow: none !important;
+                        border: 1px solid #ddd !important;
+                        break-inside: avoid;
+                    }
+                    .schedule-container {
+                        padding: 20px !important;
+                    }
+                }
+                `}
+            </style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
                 <div>
                     <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>My Schedule</h1>
@@ -49,7 +94,11 @@ const Schedule = () => {
                         <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Academic Year 2025-2026</p>
                     </div>
                 </div>
-                <button style={{ padding: '10px 20px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'white', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+                <button
+                    onClick={handleDownloadPDF}
+                    className="no-print"
+                    style={{ padding: '10px 20px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'white', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
+                >
                     Download PDF
                 </button>
             </div>
