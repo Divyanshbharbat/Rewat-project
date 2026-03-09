@@ -7,34 +7,28 @@ import {
     AlertCircle,
     Calendar
 } from 'lucide-react';
+import API from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const StudentDashboard = () => {
     const { user } = useAuth();
     const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchDashboard = async () => {
-            if (!user || !user.token) {
-                // Handle case where user or token is not available yet
-                return;
-            }
+            if (!user || !user.token) return;
             try {
-                const res = await fetch('http://localhost:5000/api/student/dashboard', {
-                    headers: { 'Authorization': `Bearer ${user.token} ` }
-                });
-                const result = await res.json();
-                if (res.ok) {
-                    setData(result);
-                } else {
-                    console.error("Failed to fetch dashboard data:", result);
-                }
+                const res = await API.get('/student/dashboard');
+                setData(res.data);
             } catch (error) {
-                console.error("Error fetching dashboard data:", error);
+                console.error("Error fetching dashboard data:", error.response?.data || error.message);
+            } finally {
+                setLoading(false);
             }
         };
         fetchDashboard();
-    }, [user]); // Depend on user object to re-fetch if user (and thus token) changes
+    }, [user]);
 
     const stats = [
         { label: 'My Classes', value: data?.classesCount || '...', icon: <BookOpen color="#3b82f6" />, color: '#eff6ff' },

@@ -1,258 +1,104 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarCheck, Save, Search } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, Users, Activity, ChevronRight, BarChart } from 'lucide-react';
 import API from '../../services/api';
-import Table from '../../components/Table/Table';
-import { Toaster, toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
 const Attendance = () => {
     const { user } = useAuth();
-    const [classes, setClasses] = useState([]);
-    const [selectedClass, setSelectedClass] = useState('');
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [students, setStudents] = useState([]);
-    const [attendanceRecords, setAttendanceRecords] = useState({});
-    const [loading, setLoading] = useState(false);
-    const [saving, setSaving] = useState(false);
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if(user && user.token) fetchClasses();
+        if (user && user.token) fetchAttendance();
     }, [user]);
 
-    useEffect(() => {
-        if (selectedClass && selectedDate && user && user.token) {
-            fetchStudentsAndAttendance();
-        }
-    }, [selectedClass, selectedDate, user]);
-
-    const getHeaders = () => ({
-        headers: { Authorization: `Bearer ${user.token}` }
-    });
-
-    const fetchClasses = async () => {
+    const fetchAttendance = async () => {
         try {
-            const res = await API.get('/teacher/classes', getHeaders());
-            setClasses(res.data);
-            if (res.data.length > 0) {
-                setSelectedClass(res.data[0]._id);
-            }
-        } catch (error) {
-            toast.error('Failed to fetch assigned classes');
-        }
-    };
-
-    const fetchStudentsAndAttendance = async () => {
-        try {
-            setLoading(true);
-            const selectedClassObj = classes.find(c => c._id === selectedClass);
-            if (!selectedClassObj) return;
-
-            const [attendanceRes] = await Promise.all([
-                API.get(`/attendance/class/${selectedClass}?date=${selectedDate}`, getHeaders())
-            ]);
-            
-            // From our new API controller logic, `students` array is deeply populated inside classes.
-            setStudents(selectedClassObj.students || []);
-            
-            const existingRecords = {};
-            attendanceRes.data.forEach(record => {
-                existingRecords[record.studentId._id || record.studentId] = record.status;
+            const res = await API.get('/student/attendance', {
+                headers: { Authorization: `Bearer ${user?.token}` }
             });
-            setAttendanceRecords(existingRecords);
-            
+            setData(res.data);
         } catch (error) {
-            toast.error('Failed to fetch data');
+            console.error('Failed to fetch attendance:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleMarkAttendance = (studentId, status) => {
-        setAttendanceRecords(prev => ({
-            ...prev,
-            [studentId]: status
-        }));
-    };
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading attendance...</div>;
 
-    const handleSaveAttendance = async () => {
-        try {
-            setSaving(true);
-            const attendancePromises = Object.keys(attendanceRecords).map(studentId => {
-                return API.post('/attendance', {
-                    classId: selectedClass,
-                    studentId,
-                    date: selectedDate,
-                    status: attendanceRecords[studentId]
-                }, getHeaders());
-            });
-            
-            await Promise.all(attendancePromises);
-            toast.success('Attendance saved successfully');
-        } catch (error) {
-            toast.error('Failed to save attendance');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const columns = [
-        { 
-            header: 'Student', 
-            accessor: 'name',
-            render: (row) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ 
-                        width: '32px', 
-                        height: '32px', 
-                        borderRadius: '50%', 
-                        backgroundColor: 'var(--primary-light)', color: 'var(--primary-color)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: '600', fontSize: '12px'
-                    }}>
-                        {row.firstName?.charAt(0)}{row.lastName?.charAt(0)}
-                    </div>
-                    <div>
-                        <p style={{ fontWeight: '500', color: 'var(--text-main)', fontSize: '14px' }}>{row.firstName} {row.lastName}</p>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{row.studentId}</p>
-                    </div>
-                </div>
-            )
-        },
-        { 
-            header: 'Status', 
-            accessor: 'status',
-            render: (row) => {
-                const currentStatus = attendanceRecords[row._id] || '';
-                return (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button
-                            onClick={() => handleMarkAttendance(row._id, 'Present')}
-                            style={{
-                                padding: '6px 12px',
-                                borderRadius: 'var(--radius-sm)',
-                                backgroundColor: currentStatus === 'Present' ? '#10b981' : 'transparent',
-                                color: currentStatus === 'Present' ? 'white' : '#10b981',
-                                border: '1px solid #10b981',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Present
-                        </button>
-                        <button
-                            onClick={() => handleMarkAttendance(row._id, 'Absent')}
-                            style={{
-                                padding: '6px 12px',
-                                borderRadius: 'var(--radius-sm)',
-                                backgroundColor: currentStatus === 'Absent' ? '#ef4444' : 'transparent',
-                                color: currentStatus === 'Absent' ? 'white' : '#ef4444',
-                                border: '1px solid #ef4444',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            Absent
-                        </button>
-                    </div>
-                );
-            }
-        }
+    const stats = [
+        { label: 'Overall Attendance', value: `${data?.overall || 0}%`, icon: <Calendar color="#3b82f6" />, color: '#eff6ff', trend: 'Above average', trendColor: '#10b981' },
+        { label: 'Present', value: data?.present || 0, icon: <CheckCircle color="#10b981" />, color: '#ecfdf5' },
+        { label: 'Absent', value: data?.absent || 0, icon: <XCircle color="#ef4444" />, color: '#fef2f2' },
+        { label: 'Total Classes', value: data?.totalClasses || 0, icon: <Users color="#8b5cf6" />, color: '#f5f3ff' },
     ];
 
     return (
         <div>
-            <Toaster position="top-right" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div>
-                    <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>Attendance</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Mark daily attendance for your classes.</p>
-                </div>
-                
-                <button
-                    onClick={handleSaveAttendance}
-                    disabled={saving || students.length === 0}
-                    style={{
-                        padding: '12px 24px',
-                        backgroundColor: 'var(--primary-color)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        border: 'none',
-                        cursor: (saving || students.length === 0) ? 'not-allowed' : 'pointer',
-                        transition: 'background-color 0.2s',
-                        boxShadow: 'var(--shadow-sm)',
-                        opacity: (saving || students.length === 0) ? 0.7 : 1
-                    }}
-                >
-                    <Save size={18} />
-                    {saving ? 'Saving...' : 'Save Attendance'}
-                </button>
+            <div style={{ marginBottom: '30px' }}>
+                <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>My Attendance</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Track your attendance record</p>
             </div>
 
-            <div className="premium-card" style={{ marginBottom: '20px', display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>Select Class</label>
-                    <select
-                        value={selectedClass}
-                        onChange={(e) => setSelectedClass(e.target.value)}
-                        style={{
-                            padding: '10px 14px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-color)',
-                            fontSize: '14px',
-                            backgroundColor: 'white',
-                            outline: 'none',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <option value="" disabled>Select a class</option>
-                        {classes.map(c => (
-                            <option key={c._id} value={c._id}>Class {c.className} - {c.section}</option>
-                        ))}
-                    </select>
-                </div>
-                
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)' }}>Select Date</label>
-                    <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        style={{
-                            padding: '10px 14px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-color)',
-                            fontSize: '14px',
-                            backgroundColor: 'white',
-                            outline: 'none'
-                        }}
-                    />
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+                {stats.map((stat, idx) => (
+                    <div key={idx} className="premium-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: stat.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {stat.icon}
+                            </div>
+                        </div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '4px' }}>{stat.label}</p>
+                        <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>{stat.value}</h2>
+                        {stat.trend && (
+                            <p style={{ fontSize: '12px', color: stat.trendColor, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Activity size={12} /> {stat.trend}
+                            </p>
+                        )}
+                    </div>
+                ))}
             </div>
 
-            <div className="premium-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <CalendarCheck size={20} color="var(--primary-color)" /> Student Register ({students.length})
-                    </h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
+                {/* Subject-wise Attendance */}
+                <div className="premium-card">
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Subject-wise Attendance</h3>
+                    {data?.subjectWise?.map((item, idx) => (
+                        <div key={idx} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <div>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '600' }}>{item.subject}</h4>
+                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{item.attended} out of {item.total} classes</p>
+                                </div>
+                                <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--primary-color)' }}>{item.percentage}%</span>
+                            </div>
+                            <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: `${item.percentage}%`, height: '100%', backgroundColor: 'var(--primary-color)', borderRadius: '4px' }}></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
 
-                {loading ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading students...</div>
-                ) : (
-                    <Table 
-                        columns={columns} 
-                        data={students} 
-                    />
-                )}
+                {/* Recent Activity */}
+                <div className="premium-card">
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Recent Activity</h3>
+                    {data?.recentActivity?.map((activity, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '15px', border: '1px solid #f1f5f9', borderRadius: 'var(--radius-md)', marginBottom: '12px', backgroundColor: '#fcfdfd' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '600' }}>{activity.day}</h4>
+                                    {activity.status === 'Present' ? <CheckCircle size={16} color="#10b981" /> : <XCircle size={16} color="#ef4444" />}
+                                </div>
+                                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>{activity.date}</p>
+                                <p style={{ fontSize: '13px', color: '#10b981', fontWeight: '500' }}>{activity.status} - {activity.count} classes</p>
+                            </div>
+                        </div>
+                    ))}
+                    <button style={{ width: '100%', padding: '10px', border: 'none', background: 'none', color: 'var(--primary-color)', fontWeight: '600', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', marginTop: '10px' }}>
+                        View Full History <ChevronRight size={16} />
+                    </button>
+                </div>
             </div>
         </div>
     );

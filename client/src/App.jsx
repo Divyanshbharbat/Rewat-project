@@ -6,6 +6,12 @@ import Sidebar from './components/Sidebar';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import Schedule from './pages/Attendance/Schedule';
+import Grades from './pages/Grades/Grades';
+import Attendance from './pages/Attendance/Attendance';
+import Assignments from './pages/Assignments/Assignments';
+import Messages from './pages/Messages/Messages';
+import Profile from './pages/Profile/Profile';
 
 import Students from './pages/Students/Students';
 import Teachers from './pages/Teachers/Teachers';
@@ -14,11 +20,6 @@ import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
 
 import MyClasses from './pages/MyClasses/MyClasses';
-import Attendance from './pages/Attendance/Attendance';
-import Grades from './pages/Grades/Grades';
-import Assignments from './pages/Assignments/Assignments';
-import Messages from './pages/Messages/Messages';
-import Profile from './pages/Profile/Profile';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -73,7 +74,7 @@ function App() {
               <Settings />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/teacher/dashboard" element={
             <ProtectedRoute allowedRoles={['teacher']}>
               <TeacherDashboard />
@@ -113,6 +114,36 @@ function App() {
           <Route path="/student/dashboard" element={
             <ProtectedRoute allowedRoles={['student']}>
               <StudentDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/schedule" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Schedule />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/grades" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Grades />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/attendance" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Attendance />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/assignments" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Assignments />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/messages" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Messages />
+            </ProtectedRoute>
+          } />
+          <Route path="/student/profile" element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Profile />
             </ProtectedRoute>
           } />
           <Route path="/" element={<Navigate to="/login" />} />

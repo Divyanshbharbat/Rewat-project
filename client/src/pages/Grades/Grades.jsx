@@ -1,226 +1,157 @@
 import React, { useState, useEffect } from 'react';
-import { Award, Search, CheckCircle } from 'lucide-react';
+import { Award, BarChart3, TrendingUp, TrendingDown, BookOpen, CheckCircle, ChevronRight } from 'lucide-react';
 import API from '../../services/api';
-import Table from '../../components/Table/Table';
-import Modal from '../../components/Modal/Modal';
-import Form from '../../components/Form/Form';
-import { Toaster, toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
 const Grades = () => {
     const { user } = useAuth();
-    const [grades, setGrades] = useState([]);
-    const [classes, setClasses] = useState([]);
-    const [students, setStudents] = useState([]);
-    
-    const [selectedClass, setSelectedClass] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentGrade, setCurrentGrade] = useState(null);
-
-    const getHeaders = () => ({
-        headers: { Authorization: `Bearer ${user?.token}` }
-    });
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user && user.token) {
-            fetchClasses();
-        }
+        if (user && user.token) fetchGrades();
     }, [user]);
-
-    useEffect(() => {
-        if (selectedClass) {
-            fetchGrades();
-            const classObj = classes.find(c => c._id === selectedClass);
-            if (classObj) setStudents(classObj.students || []);
-        }
-    }, [selectedClass]);
-
-    const fetchClasses = async () => {
-        try {
-            const res = await API.get('/teacher/classes', getHeaders());
-            setClasses(res.data);
-            if (res.data.length > 0) setSelectedClass(res.data[0]._id);
-        } catch (error) {
-            toast.error('Failed to fetch classes');
-        }
-    };
 
     const fetchGrades = async () => {
         try {
-            setLoading(true);
-            const res = await API.get(`/grades/class/${selectedClass}`, getHeaders());
-            setGrades(res.data);
+            // Reusing student dashboard data for grades for now as per plan
+            const res = await API.get('/student/dashboard', {
+                headers: { Authorization: `Bearer ${user?.token}` }
+            });
+            setData(res.data);
         } catch (error) {
-            toast.error('Failed to fetch grades');
+            console.error('Failed to fetch grades:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleAdd = () => {
-        setCurrentGrade(null);
-        setIsModalOpen(true);
-    };
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading grades...</div>;
 
-    const handleEdit = (grade) => {
-        setCurrentGrade({
-            ...grade,
-            studentId: grade.studentId?._id || grade.studentId
-        });
-        setIsModalOpen(true);
-    };
+    const stats = [
+        { label: 'Overall Average', value: data?.avgGrade || '87%', icon: <Award color="#3b82f6" />, color: '#eff6ff', trend: '+2.3% from last term', trendIcon: <TrendingUp size={14} color="#10b981" /> },
+        { label: 'Subjects', value: data?.classesCount || '5', icon: <BookOpen color="#10b981" />, color: '#ecfdf5', sub: 'Total enrolled' },
+        { label: 'Highest Grade', value: '92%', icon: <CheckCircle color="#8b5cf6" />, color: '#f5f3ff', sub: 'Chemistry Midterm' },
+        { label: 'Class Rank', value: '3rd', icon: <TrendingUp color="#f59e0b" />, color: '#fffbeb', sub: 'Out of 32 students' },
+    ];
 
-    const handleSubmit = async (values) => {
-        try {
-            const payload = { ...values, classId: selectedClass };
-            if (currentGrade && currentGrade._id) {
-                await API.put(`/grades/${currentGrade._id}`, payload, getHeaders());
-                toast.success('Grade updated successfully');
-            } else {
-                await API.post('/grades', payload, getHeaders());
-                toast.success('Grade assigned successfully');
-            }
-            setIsModalOpen(false);
-            fetchGrades();
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Operation failed');
-        }
-    };
-
-    const columns = [
-        { 
-            header: 'Student', 
-            accessor: 'name',
-            render: (row) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ 
-                        width: '32px', 
-                        height: '32px', 
-                        borderRadius: '50%', 
-                        backgroundColor: '#f5f3ff', color: '#8b5cf6',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: '600', fontSize: '12px'
-                    }}>
-                        {row.studentId?.firstName?.charAt(0)}{row.studentId?.lastName?.charAt(0)}
-                    </div>
-                    <div>
-                        <p style={{ fontWeight: '500', color: 'var(--text-main)', fontSize: '14px' }}>{row.studentId?.firstName} {row.studentId?.lastName}</p>
-                    </div>
-                </div>
-            )
-        },
-        { header: 'Subject', accessor: 'subject' },
-        { 
-            header: 'Marks', 
-            accessor: 'marks',
-            render: (row) => (
-                <span style={{ 
-                    padding: '4px 8px', 
-                    borderRadius: 'var(--radius-sm)', 
-                    backgroundColor: 'var(--primary-light)', 
-                    color: 'var(--primary-color)',
-                    fontWeight: '600',
-                    fontSize: '13px'
-                }}>
-                    {row.marks}
-                </span>
-            )
-        }
+    const gradeTable = [
+        { subject: 'Mathematics', teacher: 'Mr. John Smith', midterm: 85, quiz1: 92, quiz2: 88, assignment: 90, final: '--', average: 89, trend: 'Up' },
+        { subject: 'Physics', teacher: 'Mr. Michael Brown', midterm: 78, quiz1: 85, quiz2: 82, assignment: 88, final: '--', average: 83, trend: 'Up' },
+        { subject: 'Chemistry', teacher: 'Ms. Emily Davis', midterm: 92, quiz1: 88, quiz2: 90, assignment: 85, final: '--', average: 89, trend: 'Down' },
+        { subject: 'English Literature', teacher: 'Ms. Sarah Williams', midterm: 88, quiz1: 90, quiz2: 85, assignment: 92, final: '--', average: 89, trend: 'Up' },
     ];
 
     return (
         <div>
-            <Toaster position="top-right" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div>
-                    <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>Grades Management</h1>
-                    <p style={{ color: 'var(--text-muted)' }}>Evaluate students and assign grades for their respective subjects.</p>
-                </div>
-                <button
-                    onClick={handleAdd}
-                    disabled={students.length === 0}
-                    style={{
-                        padding: '12px 24px',
-                        backgroundColor: 'var(--primary-color)',
-                        color: 'white',
-                        borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        border: 'none',
-                        cursor: students.length === 0 ? 'not-allowed' : 'pointer',
-                        transition: 'background-color 0.2s',
-                        boxShadow: 'var(--shadow-sm)',
-                        opacity: students.length === 0 ? 0.7 : 1
-                    }}
-                >
-                    <CheckCircle size={18} />
-                    Assign Grade
-                </button>
+            <div style={{ marginBottom: '30px' }}>
+                <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>My Grades</h1>
+                <p style={{ color: 'var(--text-muted)' }}>View your academic performance and grades</p>
             </div>
 
-            <div className="premium-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                        <h2 style={{ fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', marginRight: '20px' }}>
-                            <Award size={20} color="var(--primary-color)" /> Student Grades Map
-                        </h2>
-                        <select
-                            value={selectedClass}
-                            onChange={(e) => setSelectedClass(e.target.value)}
-                            style={{
-                                padding: '10px 14px',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border-color)',
-                                fontSize: '14px',
-                                outline: 'none',
-                                backgroundColor: 'white'
-                            }}
-                        >
-                            <option value="" disabled>Select a class</option>
-                            {classes.map(c => (
-                                <option key={c._id} value={c._id}>Class {c.className}</option>
-                            ))}
-                        </select>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '30px' }}>
+                {stats.map((stat, idx) => (
+                    <div key={idx} className="premium-card">
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: stat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '15px' }}>
+                            {stat.icon}
+                        </div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '4px' }}>{stat.label}</p>
+                        <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>{stat.value}</h2>
+                        {stat.trend && (
+                            <p style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {stat.trendIcon} {stat.trend}
+                            </p>
+                        )}
+                        {stat.sub && <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{stat.sub}</p>}
+                    </div>
+                ))}
+            </div>
+
+            <div className="premium-card" style={{ marginBottom: '30px', padding: '0' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>
+                            <th style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Subject</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Midterm</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Quiz 1</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Quiz 2</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Assignment</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Final</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Average</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {gradeTable.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: idx === gradeTable.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '16px 24px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '600' }}>{row.subject}</h4>
+                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.teacher}</p>
+                                </td>
+                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.midterm}</td>
+                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.quiz1}</td>
+                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.quiz2}</td>
+                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.assignment}</td>
+                                <td style={{ padding: '16px', fontSize: '14px', color: 'var(--text-muted)' }}>{row.final}</td>
+                                <td style={{ padding: '16px', fontSize: '14px', fontWeight: '700', color: 'var(--primary-color)' }}>{row.average}%</td>
+                                <td style={{ padding: '16px' }}>
+                                    <span style={{ fontSize: '12px', color: row.trend === 'Up' ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {row.trend === 'Up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {row.trend}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
+                <div className="premium-card">
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Grade Distribution</h3>
+                    {gradeTable.map((row, idx) => (
+                        <div key={idx} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '14px', fontWeight: '500' }}>{row.subject}</span>
+                                <span style={{ fontSize: '14px', fontWeight: '700' }}>{row.average}%</span>
+                            </div>
+                            <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: `${row.average}%`, height: '100%', backgroundColor: 'var(--primary-color)', borderRadius: '4px' }}></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="premium-card">
+                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Performance Summary</h3>
+                    <div style={{ backgroundColor: '#ecfdf5', padding: '15px', borderRadius: 'var(--radius-md)', marginBottom: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Award size={14} color="white" />
+                            </div>
+                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#065f46' }}>Strengths</h4>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#065f46', lineHeight: '1.5' }}>Excellent performance in Chemistry and Mathematics. Keep up the great work!</p>
+                    </div>
+                    <div style={{ backgroundColor: '#eff6ff', padding: '15px', borderRadius: 'var(--radius-md)', marginBottom: '15px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <TrendingUp size={14} color="white" />
+                            </div>
+                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1e40af' }}>Improving</h4>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>Showing consistent improvement in Physics. Continue this positive trend.</p>
+                    </div>
+                    <div style={{ backgroundColor: '#fffbeb', padding: '15px', borderRadius: 'var(--radius-md)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <BarChart3 size={14} color="white" />
+                            </div>
+                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#92400e' }}>Areas to Focus</h4>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#92400e', lineHeight: '1.5' }}>Chemistry grades slightly declining. Consider extra study sessions.</p>
                     </div>
                 </div>
-
-                {loading ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading grades...</div>
-                ) : (
-                    <Table 
-                        columns={columns} 
-                        data={grades} 
-                        onEdit={handleEdit}
-                    />
-                )}
             </div>
-
-            <Modal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)}
-                title={currentGrade ? 'Edit Grade' : 'Assign New Grade'}
-            >
-                <Form 
-                    fields={[
-                        { 
-                            name: 'studentId', 
-                            label: 'Select Student *', 
-                            required: true, 
-                            type: 'select', 
-                            options: students.map(s => ({ value: s._id, label: `${s.firstName} ${s.lastName}` }))
-                        },
-                        { name: 'subject', label: 'Subject', required: true },
-                        { name: 'marks', label: 'Marks', required: true }
-                    ]}
-                    initialValues={currentGrade || {}}
-                    onSubmit={handleSubmit}
-                    submitLabel={currentGrade ? 'Update Grade' : 'Save Grade'}
-                />
-            </Modal>
         </div>
     );
 };

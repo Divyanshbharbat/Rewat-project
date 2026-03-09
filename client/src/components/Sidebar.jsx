@@ -5,6 +5,7 @@ import {
   UserRound,
   BookOpen,
   CalendarCheck,
+  Calendar,
   BarChart3,
   Settings,
   LogOut,
@@ -92,7 +93,7 @@ const Sidebar = ({ role }) => {
         path: "/student/dashboard",
       },
       {
-        icon: <CalendarCheck size={20} />,
+        icon: <Calendar size={20} />,
         label: "Schedule",
         path: "/student/schedule",
       },
@@ -102,7 +103,7 @@ const Sidebar = ({ role }) => {
         path: "/student/grades",
       },
       {
-        icon: <CalendarCheck size={20} />,
+        icon: <UserRound size={20} />,
         label: "Attendance",
         path: "/student/attendance",
       },
