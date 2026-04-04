@@ -13,9 +13,11 @@ const getAssignments = async (req, res) => {
 
 const createAssignment = async (req, res) => {
     try {
-        const { title, description, classId, dueDate } = req.body;
+        const { title, description, classId, dueDate, subject } = req.body;
+        if (!subject) return res.status(400).json({ message: 'Subject is required' });
+        
         const assignment = new Assignment({
-            title, description, classId, dueDate, teacherId: req.user.id
+            title, description, classId, dueDate, subject, teacherId: req.user.id
         });
         const savedAssignment = await assignment.save();
         res.status(201).json(savedAssignment);

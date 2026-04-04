@@ -18,6 +18,7 @@ import Teachers from './pages/Teachers/Teachers';
 import Classes from './pages/Classes/Classes';
 import Reports from './pages/Reports/Reports';
 import Settings from './pages/Settings/Settings';
+import Events from './pages/Events/Events';
 
 import MyClasses from './pages/MyClasses/MyClasses';
 
@@ -67,6 +68,11 @@ function App() {
           <Route path="/admin/reports" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <Reports />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/events" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Events />
             </ProtectedRoute>
           } />
           <Route path="/admin/settings" element={

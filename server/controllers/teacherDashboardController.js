@@ -1,6 +1,9 @@
 const Class = require('../models/Class');
 const Teacher = require('../models/Teacher');
 const User = require('../models/User');
+const Assignment = require('../models/Assignment');
+const Student = require('../models/Student');
+const Attendance = require('../models/Attendance');
 
 const getTeacherClasses = async (req, res) => {
   try {
@@ -47,8 +50,81 @@ const updateTeacherProfile = async (req, res) => {
     }
 };
 
+const getTeacherDashboard = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { classId, subject } = req.query;
+        
+        // Fetch teacher profile to get profile ID if needed
+        const teacherProfile = await Teacher.findOne({ userId: userId });
+        const teacherProfileId = teacherProfile ? teacherProfile._id : null;
+
+        // Fetch classes assigned to this teacher (either via direct user ID or profile ID)
+        const teacherClasses = await Class.find({ 
+            $or: [
+                { teacher: userId },
+                { classTeacher: teacherProfileId }
+            ] 
+        }).populate('students');
+        
+        const classesCount = teacherClasses.length;
+        
+        // Filter classes if classId is provided
+        const filteredClasses = classId ? teacherClasses.filter(c => c._id.toString() === classId) : teacherClasses;
+        const filteredClassIds = filteredClasses.map(c => c._id);
+
+        // Calculate total unique students in the teacher's classes
+        const students = await Student.find({ class: { $in: filteredClassIds } });
+        const totalStudents = students.length;
+
+        // Fetch assignments created by this teacher
+        const assignments = await Assignment.find({ teacherId: userId });
+        const pendingAssignments = assignments.length;
+
+        // Calculate Average Attendance for the selected classes and subjects
+        const attendanceQuery = { classId: { $in: filteredClassIds } };
+        if (subject) attendanceQuery.subject = subject;
+        
+        const attendanceRecords = await Attendance.find(attendanceQuery);
+        const totalAttendance = attendanceRecords.length;
+        const presentCount = attendanceRecords.filter(r => r.status === 'Present').length;
+        const avgAttendance = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+
+        // Generate dynamic schedule based on classes and their primary subjects
+        const schedule = await Promise.all(filteredClasses.map(async c => {
+            const classStudentsCount = await Student.countDocuments({ class: c._id });
+            const classSubject = (c.subjects && Array.isArray(c.subjects) && c.subjects.length > 0) 
+                ? c.subjects[0] 
+                : (subject || 'General');
+
+            return {
+                subject: classSubject,
+                class: `${c.className || 'Unknown'} - ${c.section || 'N/A'}`,
+                time: '09:00 AM - 10:30 AM', // Default slot for now
+                students: `${classStudentsCount} Students`
+            };
+        }));
+
+        res.json({
+            classesCount,
+            totalStudents,
+            pendingAssignments,
+            avgAttendance: `${avgAttendance}%`,
+            classesToday: filteredClasses.length,
+            schedule
+        });
+    } catch (error) {
+        console.error('Teacher Dashboard Error:', error);
+        res.status(500).json({ 
+            message: 'Error loading dashboard data', 
+            error: error.message 
+        });
+    }
+};
+
 module.exports = {
     getTeacherClasses,
     getTeacherProfile,
-    updateTeacherProfile
+    updateTeacherProfile,
+    getTeacherDashboard
 };

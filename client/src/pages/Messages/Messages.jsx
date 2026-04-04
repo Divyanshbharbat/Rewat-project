@@ -10,16 +10,16 @@ const Messages = () => {
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
     const [receiverId, setReceiverId] = useState('');
-    const [students, setStudents] = useState([]); // Or colleagues
+    const [recipients, setRecipients] = useState([]);
 
     const getHeaders = () => ({
         headers: { Authorization: `Bearer ${user?.token}` }
     });
 
     useEffect(() => {
-        if(user && user.token) {
+        if (user && user.token) {
             fetchMessages();
-            // Optional: fetch users to msg
+            fetchRecipients();
         }
     }, [user]);
 
@@ -35,9 +35,21 @@ const Messages = () => {
         }
     };
 
+    const fetchRecipients = async () => {
+        try {
+            const res = await API.get('/messages/recipients', getHeaders());
+            setRecipients(res.data);
+        } catch (error) {
+            console.error('Failed to fetch recipients');
+        }
+    };
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (!receiverId || !newMessage.trim()) return;
+        if (!receiverId || !newMessage.trim()) {
+            toast.error('Please select a recipient and type a message');
+            return;
+        }
 
         try {
             await API.post('/messages', { receiverId, message: newMessage }, getHeaders());
@@ -54,43 +66,51 @@ const Messages = () => {
             <Toaster position="top-right" />
             <div style={{ marginBottom: '30px' }}>
                 <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>Messages</h1>
-                <p style={{ color: 'var(--text-muted)' }}>Communicate seamlessly with students and administration.</p>
+                <p style={{ color: 'var(--text-muted)' }}>Communicate seamlessly with teachers and administration.</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '30px', height: 'calc(100vh - 200px)' }}>
+            <div style={{ display: 'flex', gap: '30px', height: 'calc(100vh - 220px)' }}>
                 {/* Inbox Left Side */}
-                <div className="premium-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '15px' }}>
+                <div className="premium-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: '0', overflow: 'hidden' }}>
+                    <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)' }}>
                         <h2 style={{ fontSize: '18px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Mail size={20} color="var(--primary-color)" /> Inbox Feed
+                            <Mail size={20} color="var(--primary-color)" /> Messages Feed
                         </h2>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '15px', padding: '20px' }}>
                         {loading ? (
-                            <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', paddingTop: '40px' }}>Loading conversation...</div>
                         ) : messages.length === 0 ? (
-                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', paddingTop: '40px' }}>No messages found.</div>
+                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', paddingTop: '40px' }}>No messages found. Start a conversation!</div>
                         ) : (
                             messages.map(msg => {
-                                const isMe = msg.senderId?._id === user?.id;
+                                const isMe = msg.senderId?._id === user?._id || msg.senderId === user?._id;
                                 return (
                                     <div key={msg._id} style={{
                                         alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                        maxWidth: '75%',
-                                        backgroundColor: isMe ? 'var(--primary-color)' : 'var(--bg-color)',
-                                        color: isMe ? 'white' : 'var(--text-main)',
-                                        padding: '12px 16px',
-                                        borderRadius: 'var(--radius-md)',
-                                        border: isMe ? 'none' : '1px solid var(--border-color)',
-                                        boxShadow: 'var(--shadow-sm)'
+                                        maxWidth: '70%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: isMe ? 'flex-end' : 'flex-start'
                                     }}>
-                                        <p style={{ fontSize: '11px', opacity: 0.8, marginBottom: '4px', fontWeight: '600' }}>
-                                            {isMe ? 'You' : msg.senderId?.name || 'Unknown'}
-                                        </p>
-                                        <p style={{ fontSize: '14px', lineHeight: '1.4' }}>{msg.message}</p>
-                                        <span style={{ fontSize: '10px', opacity: 0.7, alignSelf: 'flex-end', display: 'block', marginTop: '6px', textAlign: 'right' }}>
-                                            {new Date(msg.timestamp).toLocaleString()}
+                                        <div style={{
+                                            backgroundColor: isMe ? 'var(--primary-color)' : '#f1f5f9',
+                                            color: isMe ? 'white' : 'var(--text-main)',
+                                            padding: '12px 16px',
+                                            borderRadius: isMe ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                            position: 'relative'
+                                        }}>
+                                            {!isMe && (
+                                                <p style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px', fontWeight: '600' }}>
+                                                    {msg.senderId?.name || 'User'}
+                                                </p>
+                                            )}
+                                            <p style={{ fontSize: '14px', lineHeight: '1.4' }}>{msg.message}</p>
+                                        </div>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', padding: '0 4px' }}>
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 );
@@ -100,32 +120,43 @@ const Messages = () => {
                 </div>
 
                 {/* Send Message Right Side */}
-                <div className="premium-card" style={{ width: '350px', height: 'fit-content' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '20px' }}>Compose Message</h3>
-                    <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className="premium-card" style={{ width: '380px', height: 'fit-content' }}>
+                    <div style={{ marginBottom: '25px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>Compose Message</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Send a direct message to staff.</p>
+                    </div>
+
+                    <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div>
-                            <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>To User ID (Required Setup logic!)</label>
-                            <input
-                                type="text"
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Recipient</label>
+                            <select
                                 value={receiverId}
                                 onChange={(e) => setReceiverId(e.target.value)}
                                 style={{
-                                    width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                                    border: '1px solid var(--border-color)', fontSize: '14px', outline: 'none'
+                                    width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border-color)', fontSize: '14px', outline: 'none',
+                                    backgroundColor: 'white', cursor: 'pointer'
                                 }}
                                 required
-                            />
+                            >
+                                <option value="">Select a person...</option>
+                                {recipients.map(r => (
+                                    <option key={r._id} value={r._id}>
+                                        {r.name} ({r.role.charAt(0).toUpperCase() + r.role.slice(1)})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div>
-                            <label style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Message</label>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Your Message</label>
                             <textarea
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
-                                rows={5}
-                                placeholder="Type your message..."
+                                rows={6}
+                                placeholder="Type your message here..."
                                 style={{
-                                    width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                                    border: '1px solid var(--border-color)', fontSize: '14px', outline: 'none', resize: 'vertical'
+                                    width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border-color)', fontSize: '14px', outline: 'none', resize: 'none'
                                 }}
                                 required
                             />
@@ -133,22 +164,25 @@ const Messages = () => {
                         <button
                             type="submit"
                             style={{
-                                padding: '12px',
+                                padding: '14px',
                                 backgroundColor: 'var(--primary-color)',
                                 color: 'white',
                                 borderRadius: 'var(--radius-md)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '8px',
+                                gap: '10px',
                                 fontSize: '14px',
-                                fontWeight: '600',
+                                fontWeight: '700',
                                 border: 'none',
                                 cursor: 'pointer',
-                                transition: 'background-color 0.2s',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)'
                             }}
+                            onMouseOver={(e) => e.target.style.opacity = '0.9'}
+                            onMouseOut={(e) => e.target.style.opacity = '1'}
                         >
-                            <Send size={16} /> Send Message
+                            <Send size={18} /> Send Message
                         </button>
                     </form>
                 </div>

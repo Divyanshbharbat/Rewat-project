@@ -7,46 +7,93 @@ import {
     Calendar
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import API from '../services/api';
 
 const TeacherDashboard = () => {
     const { user } = useAuth();
     const [data, setData] = useState(null);
+    const [classes, setClasses] = useState([]);
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState('');
 
     useEffect(() => {
-        const fetchDashboard = async () => {
-            if (!user || !user.token) return; // Ensure user and token exist before fetching
-            try {
-                const res = await fetch('http://localhost:5000/api/teacher/dashboard', {
-                    headers: { 'Authorization': `Bearer ${user.token} ` }
-                });
-                const result = await res.json();
-                if (res.ok) {
-                    setData(result);
-                } else {
-                    console.error("Failed to fetch dashboard data:", result.message);
-                    // Optionally handle error state
-                }
-            } catch (error) {
-                console.error("Error fetching dashboard data:", error);
-                // Optionally handle error state
-            }
-        };
+        fetchClasses();
+    }, [user]);
+
+    useEffect(() => {
         fetchDashboard();
-    }, [user]); // Depend on user object to re-fetch if user (and thus token) changes
+    }, [user, selectedClass, selectedSubject]);
+
+    const fetchClasses = async () => {
+        try {
+            const res = await API.get('/teacher/classes');
+            setClasses(res.data);
+        } catch (error) {
+            console.error("Error fetching classes:", error);
+        }
+    };
+
+    const fetchDashboard = async () => {
+        if (!user || !user.token) return;
+        try {
+            let url = '/teacher/dashboard';
+            const params = [];
+            if (selectedClass) params.push(`classId=${selectedClass}`);
+            if (selectedSubject) params.push(`subject=${selectedSubject}`);
+            if (params.length > 0) url += `?${params.join('&')}`;
+            
+            const res = await API.get(url);
+            setData(res.data);
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
+        }
+    };
 
     const stats = [
         { label: 'My Classes', value: data?.classesCount || '...', icon: <BookOpen color="#3b82f6" />, color: '#eff6ff' },
         { label: 'Total Students', value: data?.totalStudents || '0', icon: <Users color="#10b981" />, color: '#ecfdf5' },
-        { label: 'Pending Assignments', value: data?.pendingAssignments || '0', icon: <AlertCircle color="#f59e0b" />, color: '#fffbeb' },
-        { label: 'Classes Today', value: data?.classesToday || '0', icon: <Clock color="#8b5cf6" />, color: '#f5f3ff' },
+        { label: 'Avg Attendance', value: data?.avgAttendance || '0%', icon: <Calendar color="#f59e0b" />, color: '#fffbeb' },
+        { label: 'Pending Assignments', value: data?.pendingAssignments || '0', icon: <AlertCircle color="#8b5cf6" />, color: '#f5f3ff' },
     ];
 
     const schedule = data?.schedule || [];
 
     return (
         <div>
-            <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Welcome back, {user?.name?.split(' ')[0]}!</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>Here's your schedule and pending tasks for today.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
+                <div>
+                    <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>Welcome back, {user?.name?.split(' ')[0]}!</h1>
+                    <p style={{ color: 'var(--text-muted)' }}>Here's your schedule and performance overview.</p>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '15px' }}>
+                    <div style={{ width: '180px' }}>
+                        <select 
+                            value={selectedClass} 
+                            onChange={(e) => {
+                                setSelectedClass(e.target.value);
+                                setSelectedSubject('');
+                            }}
+                            style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '13px', outline: 'none' }}
+                        >
+                            <option value="">All Classes</option>
+                            {classes.map(c => <option key={c._id} value={c._id}>{c.className} - {c.section}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ width: '150px' }}>
+                        <select 
+                            value={selectedSubject} 
+                            onChange={(e) => setSelectedSubject(e.target.value)}
+                            style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '13px', outline: 'none' }}
+                        >
+                            <option value="">All Subjects</option>
+                            {classes.find(c => c._id === selectedClass)?.subjects?.map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '30px' }}>
                 {stats.map((stat, idx) => (

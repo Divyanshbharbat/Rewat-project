@@ -1,4 +1,5 @@
 const Teacher = require('../models/Teacher');
+const User = require('../models/User');
 
 const getTeachers = async (req, res) => {
     try {
@@ -21,8 +22,33 @@ const getTeacherById = async (req, res) => {
 
 const createTeacher = async (req, res) => {
     try {
-        const newTeacher = new Teacher(req.body);
+        const { name, email, phone } = req.body;
+        console.log('Creating teacher for:', email, phone);
+
+        // Check if user already exists
+        let user = await User.findOne({ email });
+        
+        if (!user) {
+            // Create user for the teacher
+            // Default password is their phone number as requested
+            user = await User.create({
+                name,
+                email,
+                password: phone || 'password123',
+                role: 'teacher'
+            });
+        }
+
+        console.log('User for teacher:', user._id);
+
+        const newTeacher = new Teacher({
+            ...req.body,
+            userId: user._id
+        });
+        
+        console.log('New teacher object:', newTeacher);
         const savedTeacher = await newTeacher.save();
+        console.log('Saved teacher:', savedTeacher._id);
         res.status(201).json(savedTeacher);
     } catch (err) {
         res.status(400).json({ message: err.message });

@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const User = require('../models/User');
 
 const getStudents = async (req, res) => {
     try {
@@ -23,7 +24,28 @@ const getStudentById = async (req, res) => {
 
 const createStudent = async (req, res) => {
     try {
-        const newStudent = new Student(req.body);
+        const { firstName, lastName, email, phone } = req.body;
+        const fullName = `${firstName} ${lastName}`;
+
+        // Check if user already exists
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Create user for the student
+            // Default password is their phone number as requested
+            user = await User.create({
+                name: fullName,
+                email,
+                password: phone || 'password123',
+                role: 'student'
+            });
+        }
+
+        const newStudent = new Student({
+            ...req.body,
+            userId: user._id
+        });
+        
         const savedStudent = await newStudent.save();
         res.status(201).json(savedStudent);
     } catch (err) {

@@ -44,6 +44,11 @@ const Sidebar = ({ role }) => {
         path: "/admin/reports",
       },
       {
+        icon: <Calendar size={20} />,
+        label: "Events",
+        path: "/admin/events",
+      },
+      {
         icon: <Settings size={20} />,
         label: "Settings",
         path: "/admin/settings",

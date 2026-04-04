@@ -22,14 +22,22 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         const fetchStats = async () => {
-            const res = await fetch('http://localhost:5000/api/admin/stats', {
-                headers: { 'Authorization': `Bearer ${user.token} ` }
-            });
-            const data = await res.json();
-            if (res.ok) setStats(data);
+            try {
+                const res = await fetch('http://localhost:5000/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${user.token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setStats(data);
+                } else {
+                    console.error('Failed to fetch stats:', data.message);
+                }
+            } catch (error) {
+                console.error('Stats fetch error:', error);
+            }
         };
-        fetchStats();
-    }, [user.token]);
+        if (user?.token) fetchStats();
+    }, [user?.token]);
 
     const statCards = [
         { label: 'Total Students', value: stats.totalStudents, trend: '+12%', icon: <Users color="#3b82f6" />, color: '#eff6ff' },
@@ -42,7 +50,8 @@ const AdminDashboard = () => {
         switch (type) {
             case 'student': return <UserPlus size={16} />;
             case 'teacher': return <Users size={16} />;
-            default: return <BookOpen size={16} />;
+            case 'class': return <BookOpen size={16} />;
+            default: return <TrendingUp size={16} />;
         }
     };
 

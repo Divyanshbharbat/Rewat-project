@@ -4,36 +4,73 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 const Student = require('../models/Student');
 const Class = require('../models/Class');
 const Assignment = require('../models/Assignment');
+const Attendance = require('../models/Attendance');
+const Grade = require('../models/Grade');
+
+// @desc    Get Student grades
+// @route   GET /api/student/grades
+// @access  Private/Student
+router.get('/grades', protect, authorize('student'), async (req, res) => {
+    try {
+        const student = await Student.findOne({ 
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        });
+        if (!student) {
+            return res.status(404).json({ message: 'Student record not found' });
+        }
+        const grades = await Grade.find({ studentId: student._id }).populate('teacherId', 'name');
+        res.json(grades);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
 
 // @desc    Get Student dashboard data
 // @route   GET /api/student/dashboard
 // @access  Private/Student
 router.get('/dashboard', protect, authorize('student'), async (req, res) => {
     try {
-        const studentRecord = await Student.findOne({ userId: req.user._id });
+        const studentRecord = await Student.findOne({ 
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        });
         if (!studentRecord) {
             return res.status(404).json({ message: 'Student record not found' });
         }
 
-        const classes = await Class.find({ students: studentRecord._id });
-        const classIds = classes.map(c => c._id);
-        const assignments = await Assignment.find({ classId: { $in: classIds } }).sort({ dueDate: 1 });
+        const classId = studentRecord.class;
+        const studentClass = classId ? await Class.findById(classId) : null;
+        const classesCount = studentClass ? 1 : 0;
+        
+        const assignments = classId ? await Assignment.find({ classId }).sort({ dueDate: 1 }) : [];
+
+        // Real attendance calculation
+        const totalAttendance = await Attendance.countDocuments({ studentId: studentRecord._id });
+        const presentCount = await Attendance.countDocuments({ studentId: studentRecord._id, status: 'Present' });
+        const attendancePercentage = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
 
         res.json({
-            classesCount: classes.length,
-            attendance: `${studentRecord?.attendance || 0}%`,
-            avgGrade: studentRecord?.academicInfo?.avgGrade || '87%', // Using academicInfo or fallback
+            classesCount,
+            attendance: `${attendancePercentage}%`,
+            avgGrade: studentRecord?.academicInfo?.classRank || 'N/A', 
             assignmentsCount: assignments.length,
             assignments: assignments.map(a => ({
+                _id: a._id,
                 title: a.title,
+                subject: a.subject,
                 dueDate: a.dueDate,
                 priority: a.priority || 'medium'
             })),
-            schedule: classes.map(c => ({
-                subject: c.className,
-                time: c.schedule || '9:00 AM - 10:30 AM',
+            schedule: studentClass ? [{
+                subject: studentClass.className,
+                time: studentClass.schedule || '9:00 AM - 10:30 AM',
                 date: 'Today'
-            }))
+            }] : []
         });
     } catch (error) {
         console.error('Student Dashboard Error:', error);
@@ -46,7 +83,12 @@ router.get('/dashboard', protect, authorize('student'), async (req, res) => {
 // @access  Private/Student
 router.get('/profile', protect, authorize('student'), async (req, res) => {
     try {
-        const student = await Student.findOne({ userId: req.user._id });
+        const student = await Student.findOne({ 
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        }).populate('class');
         if (!student) {
             return res.status(404).json({ message: 'Student profile not found' });
         }
@@ -61,11 +103,21 @@ router.get('/profile', protect, authorize('student'), async (req, res) => {
 // @access  Private/Student
 router.get('/schedule', protect, authorize('student'), async (req, res) => {
     try {
-        const studentRecord = await Student.findOne({ userId: req.user._id });
+        const studentRecord = await Student.findOne({ 
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        });
         if (!studentRecord) {
             return res.status(404).json({ message: 'Student record not found' });
         }
-        const classes = await Class.find({ students: studentRecord._id }).populate('teacher', 'name');
+        
+        if (!studentRecord.class) {
+            return res.json([]);
+        }
+
+        const classes = await Class.find({ _id: studentRecord.class }).populate('teacher', 'name');
         const schedule = classes.map(c => ({
             id: c._id,
             subject: c.className,
@@ -73,7 +125,7 @@ router.get('/schedule', protect, authorize('student'), async (req, res) => {
             teacher: c.teacher?.name || 'Assigned soon',
             time: c.schedule || '9:00 AM - 10:30 AM',
             room: c.roomNumber || 'TBD',
-            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] // Simplified for now
+            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
         }));
         res.json(schedule);
     } catch (error) {
@@ -86,30 +138,51 @@ router.get('/schedule', protect, authorize('student'), async (req, res) => {
 // @access  Private/Student
 router.get('/attendance', protect, authorize('student'), async (req, res) => {
     try {
-        const student = await Student.findOne({ userId: req.user._id });
+        const student = await Student.findOne({ 
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        });
         if (!student) {
             return res.status(404).json({ message: 'Student record not found' });
         }
-        // Subject-wise attendance (mocked based on classes for now)
-        const classes = await Class.find({ students: student._id });
-        const subjectAttendance = classes.map(c => ({
-            subject: c.className,
-            attended: 28, // Mock
-            total: 30,    // Mock
-            percentage: 93
+
+        const attendanceRecords = await Attendance.find({ studentId: student._id });
+        const totalClasses = attendanceRecords.length;
+        const presentCount = attendanceRecords.filter(r => r.status === 'Present').length;
+        const absentCount = totalClasses - presentCount;
+        const overallPercentage = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+
+        // Group by subject
+        const subjectStats = {};
+        attendanceRecords.forEach(r => {
+            if (!subjectStats[r.subject]) {
+                subjectStats[r.subject] = { attended: 0, total: 0 };
+            }
+            subjectStats[r.subject].total++;
+            if (r.status === 'Present') subjectStats[r.subject].attended++;
+        });
+
+        const subjectWise = Object.keys(subjectStats).map(subject => ({
+            subject,
+            attended: subjectStats[subject].attended,
+            total: subjectStats[subject].total,
+            percentage: Math.round((subjectStats[subject].attended / subjectStats[subject].total) * 100)
         }));
 
         res.json({
-            overall: student?.attendance || 95,
-            present: 229,
-            absent: 11,
-            totalClasses: 240,
-            subjectWise: subjectAttendance,
-            recentActivity: [
-                { day: 'Monday', date: 'Jan 26, 2026', status: 'Present', count: 3 },
-                { day: 'Friday', date: 'Jan 25, 2026', status: 'Present', count: 3 },
-                { day: 'Thursday', date: 'Jan 24, 2026', status: 'Present', count: 3 }
-            ]
+            overall: overallPercentage,
+            present: presentCount,
+            absent: absentCount,
+            totalClasses: totalClasses,
+            subjectWise: subjectWise,
+            recentActivity: attendanceRecords.slice(-5).reverse().map(r => ({
+                day: new Date(r.date).toLocaleDateString(undefined, { weekday: 'long' }),
+                date: new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
+                status: r.status,
+                subject: r.subject
+            }))
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });

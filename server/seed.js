@@ -9,6 +9,7 @@ const Event = require("./models/Event");
 const Assignment = require("./models/Assignment");
 const Attendance = require("./models/Attendance");
 const Grade = require("./models/Grade");
+const Message = require("./models/Message");
 
 dotenv.config();
 
@@ -189,6 +190,29 @@ const seedDB = async () => {
                 subject: 'Physics',
                 marks: '83',
                 teacherId: teacher._id
+            }
+        ]);
+
+        // Add Message records
+        console.log("Seeding messages...");
+        await Message.create([
+            {
+                senderId: teacher._id,
+                receiverId: student._id,
+                message: "Hello Jane, don't forget to submit your Calculus homework by tomorrow.",
+                timestamp: new Date(Date.now() - 3600000 * 24) // 1 day ago
+            },
+            {
+                senderId: student._id,
+                receiverId: teacher._id,
+                message: "Hello Sir, I have already started working on it. I will submit it on time.",
+                timestamp: new Date(Date.now() - 3600000 * 23) // 23 hours ago
+            },
+            {
+                senderId: admin._id,
+                receiverId: student._id,
+                message: "Welcome to the school portal, Jane! Explore your dashboard to see your performance.",
+                timestamp: new Date(Date.now() - 3600000 * 48) // 2 days ago
             }
         ]);
 

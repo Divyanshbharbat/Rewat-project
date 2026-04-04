@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 const {
     getAssignments,
     createAssignment,
@@ -8,7 +8,7 @@ const {
     deleteAssignment
 } = require('../controllers/assignmentController');
 
-router.get('/teacher', protect, getAssignments);
+router.get('/', protect, authorize('teacher'), getAssignments);
 router.post('/', protect, createAssignment);
 router.put('/:id', protect, updateAssignment);
 router.delete('/:id', protect, deleteAssignment);

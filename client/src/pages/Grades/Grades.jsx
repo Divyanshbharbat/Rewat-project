@@ -1,45 +1,213 @@
 import React, { useState, useEffect } from 'react';
-import { Award, BarChart3, TrendingUp, TrendingDown, BookOpen, CheckCircle, ChevronRight } from 'lucide-react';
+import { Award, BarChart3, TrendingUp, TrendingDown, BookOpen, CheckCircle, ChevronRight, Save } from 'lucide-react';
 import API from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { Toaster, toast } from 'react-hot-toast';
 
 const Grades = () => {
     const { user } = useAuth();
-    const [data, setData] = useState(null);
+    const isTeacher = user?.role === 'teacher';
+    
+    // Student State
+    const [studentData, setStudentData] = useState(null);
+    
+    // Teacher State
+    const [classes, setClasses] = useState([]);
+    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState('');
+    const [students, setStudents] = useState([]);
+    
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        if (user && user.token) fetchGrades();
-    }, [user]);
+        if (user && user.token) {
+            if (isTeacher) {
+                fetchTeacherClasses();
+            } else {
+                fetchStudentGrades();
+            }
+        }
+    }, [user, isTeacher]);
 
-    const fetchGrades = async () => {
+    useEffect(() => {
+        if (isTeacher && selectedClass && selectedSubject) {
+            fetchClassGrades();
+        } else {
+            setStudents([]);
+        }
+    }, [selectedClass, selectedSubject]);
+
+    const fetchTeacherClasses = async () => {
         try {
-            // Reusing student dashboard data for grades for now as per plan
-            const res = await API.get('/student/dashboard', {
-                headers: { Authorization: `Bearer ${user?.token}` }
-            });
-            setData(res.data);
+            setLoading(true);
+            const res = await API.get('/teacher/classes');
+            setClasses(res.data);
+            if (res.data.length > 0) {
+                setSelectedClass(res.data[0]._id);
+                setSelectedSubject(res.data[0].subjects[0] || '');
+            }
         } catch (error) {
-            console.error('Failed to fetch grades:', error);
+            toast.error('Failed to fetch classes');
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading grades...</div>;
+    const fetchClassGrades = async () => {
+        try {
+            const res = await API.get(`/grades/class/${selectedClass}?subject=${selectedSubject}`);
+            setStudents(res.data);
+        } catch (error) {
+            toast.error('Failed to fetch grades');
+        }
+    };
+
+    const fetchStudentGrades = async () => {
+        try {
+            setLoading(true);
+            const res = await API.get('/student/grades');
+            setStudentData(res.data);
+        } catch (error) {
+            console.error('Failed to fetch student grades:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleMarkChange = (studentId, value) => {
+        setStudents(prev => prev.map(s => {
+            if (s._id === studentId) return { ...s, marks: value };
+            return s;
+        }));
+    };
+
+    const handleSaveMarks = async (student) => {
+        try {
+            setSaving(true);
+            await API.post('/grades', {
+                studentId: student._id,
+                subject: selectedSubject,
+                marks: student.marks,
+                classId: selectedClass
+            });
+            toast.success(`Marks saved for ${student.name}`);
+        } catch (error) {
+            toast.error('Failed to save marks');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+
+    if (isTeacher) {
+        return (
+            <div>
+                <Toaster position="top-right" />
+                <div style={{ marginBottom: '30px' }}>
+                    <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>Manage Grades</h1>
+                    <p style={{ color: 'var(--text-muted)' }}>Enter and update student marks by class and subject</p>
+                </div>
+
+                <div className="premium-card" style={{ marginBottom: '30px' }}>
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Select Class</label>
+                            <select 
+                                value={selectedClass} 
+                                onChange={(e) => {
+                                    setSelectedClass(e.target.value);
+                                    const cls = classes.find(c => c._id === e.target.value);
+                                    if (cls) setSelectedSubject(cls.subjects[0] || '');
+                                }}
+                                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none' }}
+                            >
+                                <option value="">Choose a class...</option>
+                                {classes.map(c => (
+                                    <option key={c._id} value={c._id}>{c.className} - {c.section}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Select Subject</label>
+                            <select 
+                                value={selectedSubject} 
+                                onChange={(e) => setSelectedSubject(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', outline: 'none' }}
+                            >
+                                <option value="">Choose a subject...</option>
+                                {classes.find(c => c._id === selectedClass)?.subjects.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="premium-card" style={{ padding: '0' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>
+                                <th style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--text-muted)' }}>Student Name</th>
+                                <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>Marks (%)</th>
+                                <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {students.map((student, idx) => (
+                                <tr key={student._id} style={{ borderBottom: idx === students.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '16px 24px', fontWeight: '500' }}>{student.name}</td>
+                                    <td style={{ padding: '16px' }}>
+                                        <input 
+                                            type="number" 
+                                            max="100"
+                                            min="0"
+                                            value={student.marks}
+                                            onChange={(e) => handleMarkChange(student._id, e.target.value)}
+                                            placeholder="Enter marks"
+                                            style={{ padding: '8px 12px', width: '100px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}
+                                        />
+                                    </td>
+                                    <td style={{ padding: '16px', textAlign: 'center' }}>
+                                        <button
+                                            onClick={() => handleSaveMarks(student)}
+                                            style={{
+                                                padding: '8px 16px',
+                                                borderRadius: 'var(--radius-md)',
+                                                border: 'none',
+                                                backgroundColor: 'var(--primary-color)',
+                                                color: 'white',
+                                                fontSize: '13px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            <Save size={14} /> Update
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
+    // Student View
+    const calculateAvg = () => {
+        if (!studentData || studentData.length === 0) return 0;
+        const total = studentData.reduce((acc, curr) => acc + parseFloat(curr.marks || 0), 0);
+        return Math.round(total / studentData.length);
+    };
 
     const stats = [
-        { label: 'Overall Average', value: data?.avgGrade || '87%', icon: <Award color="#3b82f6" />, color: '#eff6ff', trend: '+2.3% from last term', trendIcon: <TrendingUp size={14} color="#10b981" /> },
-        { label: 'Subjects', value: data?.classesCount || '5', icon: <BookOpen color="#10b981" />, color: '#ecfdf5', sub: 'Total enrolled' },
-        { label: 'Highest Grade', value: '92%', icon: <CheckCircle color="#8b5cf6" />, color: '#f5f3ff', sub: 'Chemistry Midterm' },
-        { label: 'Class Rank', value: '3rd', icon: <TrendingUp color="#f59e0b" />, color: '#fffbeb', sub: 'Out of 32 students' },
-    ];
-
-    const gradeTable = [
-        { subject: 'Mathematics', teacher: 'Mr. John Smith', midterm: 85, quiz1: 92, quiz2: 88, assignment: 90, final: '--', average: 89, trend: 'Up' },
-        { subject: 'Physics', teacher: 'Mr. Michael Brown', midterm: 78, quiz1: 85, quiz2: 82, assignment: 88, final: '--', average: 83, trend: 'Up' },
-        { subject: 'Chemistry', teacher: 'Ms. Emily Davis', midterm: 92, quiz1: 88, quiz2: 90, assignment: 85, final: '--', average: 89, trend: 'Down' },
-        { subject: 'English Literature', teacher: 'Ms. Sarah Williams', midterm: 88, quiz1: 90, quiz2: 85, assignment: 92, final: '--', average: 89, trend: 'Up' },
+        { label: 'Overall Average', value: `${calculateAvg()}%`, icon: <Award color="#3b82f6" />, color: '#eff6ff' },
+        { label: 'Subjects Graded', value: studentData?.length || '0', icon: <BookOpen color="#10b981" />, color: '#ecfdf5' },
     ];
 
     return (
@@ -56,104 +224,52 @@ const Grades = () => {
                             {stat.icon}
                         </div>
                         <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '4px' }}>{stat.label}</p>
-                        <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>{stat.value}</h2>
-                        {stat.trend && (
-                            <p style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {stat.trendIcon} {stat.trend}
-                            </p>
-                        )}
-                        {stat.sub && <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{stat.sub}</p>}
+                        <h2 style={{ fontSize: '24px', fontWeight: '700' }}>{stat.value}</h2>
                     </div>
                 ))}
             </div>
 
-            <div className="premium-card" style={{ marginBottom: '30px', padding: '0' }}>
+            <div className="premium-card" style={{ padding: '0' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>
-                            <th style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Subject</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Midterm</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Quiz 1</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Quiz 2</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Assignment</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Final</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Average</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500' }}>Trend</th>
+                            <th style={{ padding: '16px 24px', fontSize: '13px', color: 'var(--text-muted)' }}>Subject</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>Teacher</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>Marks (%)</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {gradeTable.map((row, idx) => (
-                            <tr key={idx} style={{ borderBottom: idx === gradeTable.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '16px 24px' }}>
-                                    <h4 style={{ fontSize: '14px', fontWeight: '600' }}>{row.subject}</h4>
-                                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{row.teacher}</p>
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.midterm}</td>
-                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.quiz1}</td>
-                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.quiz2}</td>
-                                <td style={{ padding: '16px', fontSize: '14px' }}>{row.assignment}</td>
-                                <td style={{ padding: '16px', fontSize: '14px', color: 'var(--text-muted)' }}>{row.final}</td>
-                                <td style={{ padding: '16px', fontSize: '14px', fontWeight: '700', color: 'var(--primary-color)' }}>{row.average}%</td>
-                                <td style={{ padding: '16px' }}>
-                                    <span style={{ fontSize: '12px', color: row.trend === 'Up' ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        {row.trend === 'Up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />} {row.trend}
+                        {studentData?.map((grade, idx) => (
+                            <tr key={idx} style={{ borderBottom: idx === studentData.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '16px 24px', fontWeight: '600' }}>{grade.subject}</td>
+                                <td style={{ padding: '16px', color: 'var(--text-muted)', fontSize: '14px' }}>{grade.teacherId?.name || 'Instructor'}</td>
+                                <td style={{ padding: '16px', textAlign: 'center', fontWeight: '700', color: 'var(--primary-color)' }}>{grade.marks}%</td>
+                                <td style={{ padding: '16px', textAlign: 'center' }}>
+                                    <span style={{ 
+                                        padding: '4px 10px', 
+                                        borderRadius: '12px', 
+                                        fontSize: '11px', 
+                                        fontWeight: '600',
+                                        backgroundColor: parseFloat(grade.marks) >= 40 ? '#ecfdf5' : '#fef2f2',
+                                        color: parseFloat(grade.marks) >= 40 ? '#10b981' : '#ef4444'
+                                    }}>
+                                        {parseFloat(grade.marks) >= 40 ? 'Passed' : 'Needs Improve'}
                                     </span>
                                 </td>
                             </tr>
                         ))}
+                        {(!studentData || studentData.length === 0) && (
+                            <tr>
+                                <td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No grades found yet.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '30px' }}>
-                <div className="premium-card">
-                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Grade Distribution</h3>
-                    {gradeTable.map((row, idx) => (
-                        <div key={idx} style={{ marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '14px', fontWeight: '500' }}>{row.subject}</span>
-                                <span style={{ fontSize: '14px', fontWeight: '700' }}>{row.average}%</span>
-                            </div>
-                            <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${row.average}%`, height: '100%', backgroundColor: 'var(--primary-color)', borderRadius: '4px' }}></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="premium-card">
-                    <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Performance Summary</h3>
-                    <div style={{ backgroundColor: '#ecfdf5', padding: '15px', borderRadius: 'var(--radius-md)', marginBottom: '15px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Award size={14} color="white" />
-                            </div>
-                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#065f46' }}>Strengths</h4>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#065f46', lineHeight: '1.5' }}>Excellent performance in Chemistry and Mathematics. Keep up the great work!</p>
-                    </div>
-                    <div style={{ backgroundColor: '#eff6ff', padding: '15px', borderRadius: 'var(--radius-md)', marginBottom: '15px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <TrendingUp size={14} color="white" />
-                            </div>
-                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1e40af' }}>Improving</h4>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>Showing consistent improvement in Physics. Continue this positive trend.</p>
-                    </div>
-                    <div style={{ backgroundColor: '#fffbeb', padding: '15px', borderRadius: 'var(--radius-md)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <BarChart3 size={14} color="white" />
-                            </div>
-                            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#92400e' }}>Areas to Focus</h4>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#92400e', lineHeight: '1.5' }}>Chemistry grades slightly declining. Consider extra study sessions.</p>
-                    </div>
-                </div>
             </div>
         </div>
     );
 };
 
 export default Grades;
+
