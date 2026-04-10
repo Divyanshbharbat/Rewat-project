@@ -49,6 +49,11 @@ const Sidebar = ({ role }) => {
         path: "/admin/events",
       },
       {
+        icon: <MessageSquare size={20} />,
+        label: "Messages",
+        path: "/admin/messages",
+      },
+      {
         icon: <Settings size={20} />,
         label: "Settings",
         path: "/admin/settings",

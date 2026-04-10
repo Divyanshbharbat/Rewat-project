@@ -8,7 +8,7 @@ import {
   ChevronRight,
   BookOpen,
 } from "lucide-react";
-import api from "../../services/api";
+import API from "../../services/api";
 import Modal from "../../components/Modal/Modal";
 import Form from "../../components/Form/Form";
 import { Toaster, toast } from "react-hot-toast";
@@ -31,7 +31,7 @@ const Classes = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/classes");
+      const response = await API.get("/classes");
       setClasses(response.data);
     } catch (error) {
       toast.error("Failed to fetch classes");
@@ -42,7 +42,7 @@ const Classes = () => {
 
   const fetchTeachers = async () => {
     try {
-      const response = await api.get("/teachers");
+      const response = await API.get("/teachers");
       setTeachers(response.data);
     } catch (error) {
       toast.error("Failed to fetch teachers");
@@ -65,7 +65,7 @@ const Classes = () => {
   const handleDelete = async (cls) => {
     if (window.confirm("Are you sure you want to delete this class?")) {
       try {
-        await api.delete(`/classes/${cls._id}`);
+        await API.delete(`/classes/${cls._id}`);
         toast.success("Class deleted successfully");
         fetchData();
       } catch (error) {
