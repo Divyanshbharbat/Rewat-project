@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
   TrendingUp,
@@ -11,6 +12,7 @@ import API from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const StudentDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [grades, setGrades] = useState([]);
@@ -198,6 +200,8 @@ const StudentDashboard = () => {
                     Classes
                   </h3>
                   <button
+                    type="button"
+                    onClick={() => navigate("/student/schedule")}
                     style={{
                       background: "none",
                       border: "none",
@@ -207,7 +211,7 @@ const StudentDashboard = () => {
                       cursor: "pointer",
                     }}
                   >
-                    View Full Schedule
+                    View full schedule
                   </button>
                 </div>
 
@@ -257,7 +261,19 @@ const StudentDashboard = () => {
                             }}
                           >
                             {item.time}
+                            {item.room ? ` · Room ${item.room}` : ""}
                           </p>
+                          {item.teacher && (
+                            <p
+                              style={{
+                                fontSize: "12px",
+                                color: "var(--text-muted)",
+                                marginTop: "4px",
+                              }}
+                            >
+                              {item.teacher}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div
@@ -600,19 +616,16 @@ const StudentDashboard = () => {
                 </div>
 
                 {attendanceData ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "15px",
-                    }}
-                  >
+                  <div>
+                    {/* Overall Attendance Percentage */}
                     <div
                       style={{
                         padding: "15px",
                         borderRadius: "10px",
-                        backgroundColor: "#ecfdf5",
+                        backgroundColor: "#f0f9ff",
+                        border: "2px solid #e0f2fe",
                         textAlign: "center",
+                        marginBottom: "15px",
                       }}
                     >
                       <p
@@ -622,44 +635,81 @@ const StudentDashboard = () => {
                           marginBottom: "5px",
                         }}
                       >
-                        Present
+                        Overall Attendance
                       </p>
                       <p
                         style={{
-                          fontSize: "20px",
+                          fontSize: "24px",
                           fontWeight: "700",
-                          color: "#10b981",
+                          color: "#0369a1",
                         }}
                       >
-                        {attendanceData.presentCount || 0}
+                        {attendanceData.overall || 0}%
                       </p>
                     </div>
+
+                    {/* Present and Absent Grid */}
                     <div
                       style={{
-                        padding: "15px",
-                        borderRadius: "10px",
-                        backgroundColor: "#fef2f2",
-                        textAlign: "center",
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "15px",
                       }}
                     >
-                      <p
+                      <div
                         style={{
-                          fontSize: "12px",
-                          color: "var(--text-muted)",
-                          marginBottom: "5px",
+                          padding: "15px",
+                          borderRadius: "10px",
+                          backgroundColor: "#ecfdf5",
+                          textAlign: "center",
                         }}
                       >
-                        Absent
-                      </p>
-                      <p
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            color: "var(--text-muted)",
+                            marginBottom: "5px",
+                          }}
+                        >
+                          Present
+                        </p>
+                        <p
+                          style={{
+                            fontSize: "20px",
+                            fontWeight: "700",
+                            color: "#10b981",
+                          }}
+                        >
+                          {attendanceData.present || 0}
+                        </p>
+                      </div>
+                      <div
                         style={{
-                          fontSize: "20px",
-                          fontWeight: "700",
-                          color: "#ef4444",
+                          padding: "15px",
+                          borderRadius: "10px",
+                          backgroundColor: "#fef2f2",
+                          textAlign: "center",
                         }}
                       >
-                        {attendanceData.absentCount || 0}
-                      </p>
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            color: "var(--text-muted)",
+                            marginBottom: "5px",
+                          }}
+                        >
+                          Absent
+                        </p>
+                        <p
+                          style={{
+                            fontSize: "20px",
+                            fontWeight: "700",
+                            color: "#ef4444",
+                          }}
+                        >
+                          {attendanceData.absent || 0}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ) : (

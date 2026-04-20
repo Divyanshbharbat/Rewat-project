@@ -5,10 +5,12 @@ const {
     getTeacherClasses,
     getTeacherProfile,
     updateTeacherProfile,
-    getTeacherDashboard
+    getTeacherDashboard,
+    getTeacherSchedule,
 } = require('../controllers/teacherDashboardController');
 
 router.get('/dashboard', protect, getTeacherDashboard);
+router.get('/schedule', protect, getTeacherSchedule);
 router.get('/classes', protect, getTeacherClasses);
 router.get('/profile', protect, getTeacherProfile);
 router.put('/profile', protect, updateTeacherProfile);

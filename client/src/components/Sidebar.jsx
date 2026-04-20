@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -6,17 +7,49 @@ import {
   BookOpen,
   CalendarCheck,
   Calendar,
+  CalendarDays,
   BarChart3,
   Settings,
   LogOut,
   GraduationCap,
   MessageSquare,
   UserCircle,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useSchoolSettings } from "../context/SchoolSettingsContext";
+import { useNotifications } from "../context/NotificationContext";
+import "./Sidebar.css";
+
+/* Inject badge pulse animation once */
+if (!document.getElementById("sidebar-badge-style")) {
+  const style = document.createElement("style");
+  style.id = "sidebar-badge-style";
+  style.textContent = `
+    @keyframes badgePulse {
+      0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+      70%  { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+const logoUrlLooksValid = (url) =>
+  /^https?:\/\//i.test(String(url || "").trim());
 
 const Sidebar = ({ role }) => {
   const { logout, user } = useAuth();
+  const { schoolName, schoolLogo } = useSchoolSettings();
+  const { unreadCount } = useNotifications();
+  const [logoBroken, setLogoBroken] = useState(false);
+
+  useEffect(() => {
+    setLogoBroken(false);
+  }, [schoolLogo]);
+
+  const showImageLogo = logoUrlLooksValid(schoolLogo) && !logoBroken;
+  const displaySchoolName = schoolName?.trim() || "SchoolERP";
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,6 +87,11 @@ const Sidebar = ({ role }) => {
         path: "/admin/messages",
       },
       {
+        icon: <FileText size={20} />,
+        label: "Applications",
+        path: "/admin/applications",
+      },
+      {
         icon: <Settings size={20} />,
         label: "Settings",
         path: "/admin/settings",
@@ -86,6 +124,11 @@ const Sidebar = ({ role }) => {
         path: "/teacher/assignments",
       },
       {
+        icon: <Calendar size={20} />,
+        label: "Events",
+        path: "/teacher/events",
+      },
+      {
         icon: <MessageSquare size={20} />,
         label: "Messages",
         path: "/teacher/messages",
@@ -103,11 +146,6 @@ const Sidebar = ({ role }) => {
         path: "/student/dashboard",
       },
       {
-        icon: <Calendar size={20} />,
-        label: "Schedule",
-        path: "/student/schedule",
-      },
-      {
         icon: <BarChart3 size={20} />,
         label: "Grades",
         path: "/student/grades",
@@ -123,9 +161,19 @@ const Sidebar = ({ role }) => {
         path: "/student/assignments",
       },
       {
+        icon: <CalendarDays size={20} />,
+        label: "Events",
+        path: "/student/events",
+      },
+      {
         icon: <MessageSquare size={20} />,
         label: "Messages",
         path: "/student/messages",
+      },
+      {
+        icon: <FileText size={20} />,
+        label: "Applications",
+        path: "/student/applications",
       },
       {
         icon: <UserCircle size={20} />,
@@ -147,48 +195,29 @@ const Sidebar = ({ role }) => {
         padding: "24px",
       }}
     >
-      {/* Logo */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "32px",
-        }}
-      >
+      {/* School branding (logo + name from Settings) */}
+      <div className="sidebar-brand">
         <div
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "var(--radius-lg)",
-            backgroundColor: "var(--primary-color)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-          }}
+          className={
+            showImageLogo
+              ? "sidebar-brand__mark"
+              : "sidebar-brand__mark sidebar-brand__mark--fallback"
+          }
         >
-          <GraduationCap size={24} strokeWidth={1.5} />
+          {showImageLogo ? (
+            <img
+              className="sidebar-brand__img"
+              src={schoolLogo.trim()}
+              alt={`${displaySchoolName} logo`}
+              onError={() => setLogoBroken(true)}
+            />
+          ) : (
+            <GraduationCap size={24} strokeWidth={1.5} />
+          )}
         </div>
-        <div>
-          <h2
-            style={{
-              fontSize: "18px",
-              fontWeight: "700",
-              color: "var(--text-main)",
-            }}
-          >
-            SchoolERP
-          </h2>
-          <p
-            style={{
-              fontSize: "11px",
-              color: "var(--text-muted)",
-              marginTop: "2px",
-            }}
-          >
-            {role.charAt(0).toUpperCase() + role.slice(1)} Portal
-          </p>
+        <div className="sidebar-brand__text">
+          <h2>{displaySchoolName}</h2>
+          <p>{role.charAt(0).toUpperCase() + role.slice(1)} Portal</p>
         </div>
       </div>
 
@@ -247,6 +276,8 @@ const Sidebar = ({ role }) => {
       <nav style={{ flex: 1 }}>
         {menuItems[role]?.map((item, idx) => {
           const isActive = location.pathname === item.path;
+          const isMessages = item.path.includes("/messages");
+          const showBadge = isMessages && unreadCount > 0;
           return (
             <div
               key={idx}
@@ -281,8 +312,54 @@ const Sidebar = ({ role }) => {
                 }
               }}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              {/* Icon wrapper — badge lives here */}
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                {item.icon}
+                {showBadge && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-6px",
+                      right: "-8px",
+                      background: "#ef4444",
+                      color: "white",
+                      borderRadius: "50%",
+                      minWidth: "17px",
+                      height: "17px",
+                      fontSize: "10px",
+                      fontWeight: "800",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 3px",
+                      lineHeight: 1,
+                      animation: "badgePulse 2s infinite",
+                      border: "2px solid var(--sidebar-bg, white)",
+                      zIndex: 10,
+                    }}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {/* Compact count next to label */}
+              {showBadge && (
+                <span
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    borderRadius: "10px",
+                    padding: "1px 7px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    minWidth: "20px",
+                    textAlign: "center",
+                  }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </div>
           );
         })}

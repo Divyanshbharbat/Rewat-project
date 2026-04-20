@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     BookOpen,
     Users,
@@ -10,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import API from '../services/api';
 
 const TeacherDashboard = () => {
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [data, setData] = useState(null);
     const [classes, setClasses] = useState([]);
@@ -118,9 +120,27 @@ const TeacherDashboard = () => {
             </div>
 
             <div className="premium-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '18px' }}>Today's Schedule</h3>
-                    <Calendar size={18} color="var(--text-muted)" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                    <h3 style={{ fontSize: '18px' }}>Class overview</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/teacher/schedule')}
+                            style={{
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                color: 'var(--primary-color)',
+                                background: 'var(--primary-light)',
+                                border: '1px solid #dbeafe',
+                                borderRadius: 'var(--radius-md)',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Full week schedule
+                        </button>
+                        <Calendar size={18} color="var(--text-muted)" />
+                    </div>
                 </div>
                 {schedule.map((item, idx) => (
                     <div key={idx} style={{

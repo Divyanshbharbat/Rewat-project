@@ -8,6 +8,15 @@ const Activity = require('../models/Activity');
 const Event = require('../models/Event');
 const Teacher = require('../models/Teacher');
 
+const normalizeEventPayload = (body) => {
+    const title = (body.title || '').trim();
+    const location = (body.location || '').trim();
+    const description = (body.description || '').trim();
+    const out = { title, location, description };
+    if (body.date) out.date = new Date(body.date);
+    return out;
+};
+
 // @desc    Get Admin dashboard stats
 // @route   GET /api/admin/stats
 // @access  Private/Admin
@@ -54,7 +63,7 @@ router.get('/events', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin
 router.post('/events', protect, authorize('admin'), async (req, res) => {
     try {
-        const newEvent = new Event(req.body);
+        const newEvent = new Event(normalizeEventPayload(req.body));
         const savedEvent = await newEvent.save();
         res.status(201).json(savedEvent);
     } catch (error) {
@@ -67,7 +76,11 @@ router.post('/events', protect, authorize('admin'), async (req, res) => {
 // @access  Private/Admin
 router.put('/events/:id', protect, authorize('admin'), async (req, res) => {
     try {
-        const updatedEvent = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updatedEvent = await Event.findByIdAndUpdate(
+            req.params.id,
+            normalizeEventPayload(req.body),
+            { new: true, runValidators: true },
+        );
         if (!updatedEvent) return res.status(404).json({ message: 'Event not found' });
         res.json(updatedEvent);
     } catch (error) {

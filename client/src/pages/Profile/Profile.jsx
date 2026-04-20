@@ -1,218 +1,349 @@
-import React, { useState, useEffect } from 'react';
-import { User, Lock, Save, Mail, Phone, Calendar as CalendarIcon, MapPin, GraduationCap, Award, BookOpen, Clock } from 'lucide-react';
-import API from '../../services/api';
-import { toast, Toaster } from 'react-hot-toast';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Save,
+  Mail,
+  Phone,
+  UserRound,
+  Briefcase,
+  GraduationCap,
+} from "lucide-react";
+import API from "../../services/api";
+import { toast, Toaster } from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
+import "./Profile.css";
 
 const Profile = () => {
-    const { user } = useAuth();
-    const [profile, setProfile] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-    const getHeaders = () => ({
-        headers: { Authorization: `Bearer ${user?.token}` }
-    });
+  const getHeaders = () => ({
+    headers: { Authorization: `Bearer ${user?.token}` },
+  });
 
-    useEffect(() => {
-        if (user && user.token) fetchProfile();
-    }, [user]);
+  const fetchProfile = useCallback(
+    async (opts = {}) => {
+      const silent = Boolean(opts.silent);
+      if (!silent) setLoading(true);
+      try {
+        const endpoint =
+          user.role === "student" ? "/student/profile" : "/teacher/profile";
+        const res = await API.get(endpoint, getHeaders());
+        if (res.data) setProfile(res.data);
+      } catch (error) {
+        toast.error("Failed to fetch profile");
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [user],
+  );
 
-    const fetchProfile = async () => {
-        try {
-            const endpoint = user.role === 'student' ? '/student/profile' : '/teacher/profile';
-            const res = await API.get(endpoint, getHeaders());
-            if (res.data) setProfile(res.data);
-        } catch (error) {
-            toast.error('Failed to fetch profile');
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    if (user?.token) fetchProfile();
+  }, [user?.token, fetchProfile]);
 
-    const handleProfileUpdate = async (e) => {
-        e.preventDefault();
-        try {
-            const endpoint = user.role === 'student' ? '/student/profile' : '/teacher/profile';
-            await API.put(endpoint, profile, getHeaders());
-            toast.success('Profile updated successfully');
-        } catch (error) {
-            toast.error('Failed to update profile');
-        }
-    };
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const endpoint =
+        user.role === "student" ? "/student/profile" : "/teacher/profile";
+      await API.put(endpoint, profile, getHeaders());
+      toast.success("Profile updated successfully");
+    } catch (error) {
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading profile...</div>;
-
-    const isStudent = user.role === 'student';
-
+  if (loading)
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <Toaster position="top-right" />
-            <div style={{ marginBottom: '30px' }}>
-                <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: '700' }}>My Profile</h1>
-                <p style={{ color: 'var(--text-muted)' }}>View and manage your personal information</p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: '30px' }}>
-                {/* Left Column: Avatar & Basic Info */}
-                <div className="premium-card" style={{ textAlign: 'center', height: 'fit-content' }}>
-                    <div style={{
-                        width: '120px',
-                        height: '120px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--primary-color)',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '40px',
-                        fontWeight: '700',
-                        margin: '0 auto 20px'
-                    }}>
-                        {profile?.firstName?.substring(0, 1)}{profile?.lastName?.substring(0, 1)}
-                    </div>
-                    <h2 style={{ fontSize: '22px', fontWeight: '700', marginBottom: '8px' }}>{profile?.firstName} {profile?.lastName}</h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>{isStudent ? 'Grade 10-A' : profile?.subject}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>{isStudent ? `Student ID: ${profile?.studentId}` : 'Faculty Staff'}</p>
-                    <button style={{ color: 'var(--primary-color)', background: 'none', border: 'none', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}>Change Photo</button>
-
-                    <div style={{ textAlign: 'left', marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                            <Mail size={18} color="var(--text-muted)" />
-                            <div style={{ fontSize: '14px' }}>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Email</p>
-                                <p style={{ fontWeight: '500' }}>{profile?.email}</p>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                            <Phone size={18} color="var(--text-muted)" />
-                            <div style={{ fontSize: '14px' }}>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Phone</p>
-                                <p style={{ fontWeight: '500' }}>{profile?.phone || '+1 234-567-8903'}</p>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                            <CalendarIcon size={18} color="var(--text-muted)" />
-                            <div style={{ fontSize: '14px' }}>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Date of Birth</p>
-                                <p style={{ fontWeight: '500' }}>{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'March 15, 2010'}</p>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <MapPin size={18} color="var(--text-muted)" />
-                            <div style={{ fontSize: '14px' }}>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Address</p>
-                                <p style={{ fontWeight: '500' }}>{profile?.address || '789 Pine Rd, City'}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Forms & Info Groups */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                    {/* Personal Information */}
-                    <div className="premium-card">
-                        <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '25px' }}>Personal Information</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>First Name</label>
-                                <input className="premium-input" value={profile?.firstName || ''} disabled style={{ width: '100%' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Last Name</label>
-                                <input className="premium-input" value={profile?.lastName || ''} disabled style={{ width: '100%' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Email</label>
-                                <input className="premium-input" value={profile?.email || ''} disabled style={{ width: '100%' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Phone</label>
-                                <input className="premium-input" value={profile?.phone || ''} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} style={{ width: '100%' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Date of Birth</label>
-                                <input className="premium-input" type="date" value={profile?.dateOfBirth?.split('T')[0] || ''} onChange={(e) => setProfile({ ...profile, dateOfBirth: e.target.value })} style={{ width: '100%' }} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Blood Group</label>
-                                <input className="premium-input" value={profile?.bloodGroup || ''} onChange={(e) => setProfile({ ...profile, bloodGroup: e.target.value })} style={{ width: '100%' }} />
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Address</label>
-                                <input className="premium-input" value={profile?.address || ''} onChange={(e) => setProfile({ ...profile, address: e.target.value })} style={{ width: '100%' }} />
-                            </div>
-                        </div>
-                    </div>
-
-                    {isStudent && (
-                        <>
-                            {/* Guardian Information */}
-                            <div className="premium-card">
-                                <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '25px' }}>Guardian Information</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                    <div>
-                                        <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Father's Name</label>
-                                        <input className="premium-input" value={profile?.guardianInfo?.fatherName || ''} onChange={(e) => setProfile({ ...profile, guardianInfo: { ...profile.guardianInfo, fatherName: e.target.value } })} style={{ width: '100%' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Father's Phone</label>
-                                        <input className="premium-input" value={profile?.guardianInfo?.fatherPhone || ''} onChange={(e) => setProfile({ ...profile, guardianInfo: { ...profile.guardianInfo, fatherPhone: e.target.value } })} style={{ width: '100%' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Mother's Name</label>
-                                        <input className="premium-input" value={profile?.guardianInfo?.motherName || ''} onChange={(e) => setProfile({ ...profile, guardianInfo: { ...profile.guardianInfo, motherName: e.target.value } })} style={{ width: '100%' }} />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Mother's Phone</label>
-                                        <input className="premium-input" value={profile?.guardianInfo?.motherPhone || ''} onChange={(e) => setProfile({ ...profile, guardianInfo: { ...profile.guardianInfo, motherPhone: e.target.value } })} style={{ width: '100%' }} />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Academic Information Summary Cards */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
-                                <div className="premium-card" style={{ padding: '15px', textAlign: 'center' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyCenter: 'center', margin: '0 auto 10px' }}>
-                                        <BookOpen size={16} color="#3b82f6" />
-                                    </div>
-                                    <h4 style={{ fontSize: '18px', fontWeight: '700' }}>{profile?.academicInfo?.subjectsCount || 8}</h4>
-                                    <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Subjects</p>
-                                </div>
-                                <div className="premium-card" style={{ padding: '15px', textAlign: 'center' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyCenter: 'center', margin: '0 auto 10px' }}>
-                                        <Award size={16} color="#10b981" />
-                                    </div>
-                                    <h4 style={{ fontSize: '18px', fontWeight: '700' }}>87%</h4>
-                                    <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Avg Grade</p>
-                                </div>
-                                <div className="premium-card" style={{ padding: '15px', textAlign: 'center' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyCenter: 'center', margin: '0 auto 10px' }}>
-                                        <Clock size={16} color="#8b5cf6" />
-                                    </div>
-                                    <h4 style={{ fontSize: '18px', fontWeight: '700' }}>96%</h4>
-                                    <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Attendance</p>
-                                </div>
-                                <div className="premium-card" style={{ padding: '15px', textAlign: 'center' }}>
-                                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyCenter: 'center', margin: '0 auto 10px' }}>
-                                        <GraduationCap size={16} color="#f59e0b" />
-                                    </div>
-                                    <h4 style={{ fontSize: '18px', fontWeight: '700' }}>{profile?.academicInfo?.classRank || '3rd'}</h4>
-                                    <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Class Rank</p>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-                        <button className="btn-secondary" style={{ padding: '10px 24px' }}>Cancel</button>
-                        <button onClick={handleProfileUpdate} className="btn-primary" style={{ padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-            </div>
+      <div className="profile-page">
+        <Toaster position="top-right" />
+        <div className="premium-card profile-loading">
+          <div className="profile-loading__spinner" aria-hidden />
+          <p>Loading your profile…</p>
         </div>
+      </div>
     );
+
+  const isStudent = user.role === "student";
+
+  const studentClassLabel = () => {
+    const c = profile?.class;
+    if (!c) return null;
+    if (typeof c === "object" && c.className) {
+      const sec = c.section ? `-${c.section}` : "";
+      return `${c.className}${sec}`;
+    }
+    return null;
+  };
+
+  const getFirstName = () => {
+    if (profile?.firstName) return profile.firstName;
+    if (profile?.name) return profile.name.split(" ")[0];
+    return "";
+  };
+
+  const getLastName = () => {
+    if (profile?.lastName) return profile.lastName;
+    if (profile?.name) {
+      const parts = profile.name.split(" ");
+      return parts.slice(1).join(" ");
+    }
+    return "";
+  };
+
+  const displayName = () => {
+    if (profile?.firstName && profile?.lastName)
+      return `${profile.firstName} ${profile.lastName}`;
+    return profile?.name || "";
+  };
+
+  const getInitial = () => {
+    const first = getFirstName()?.charAt(0) || "";
+    const last = getLastName()?.charAt(0) || "";
+    return (first + last).toUpperCase() || "?";
+  };
+
+  const formatPhone = (p) => {
+    if (p && String(p).trim()) return p;
+    return "Not set";
+  };
+
+  return (
+    <div className="profile-page">
+      <Toaster position="top-right" />
+      <header className="profile-page__header">
+        <p className="profile-page__eyebrow">Account</p>
+        <h1 className="profile-page__title">My profile</h1>
+        <p className="profile-page__subtitle">
+          {isStudent
+            ? "Update how you appear in class and keep your contact details current."
+            : "Manage your teaching profile and contact information in one place."}
+        </p>
+      </header>
+
+      <div className="profile-layout">
+        <aside className="premium-card profile-hero">
+          <div className="profile-hero__avatar-wrap">
+            <div className="profile-hero__avatar">{getInitial()}</div>
+          </div>
+          <h2 className="profile-hero__name">{displayName()}</h2>
+          {isStudent ? (
+            <>
+              <p className="profile-hero__line">
+                {studentClassLabel() || "Class not assigned"}
+              </p>
+              <p className="profile-hero__line profile-hero__line--muted">
+                Student ID · {profile?.studentId ?? "—"}
+              </p>
+              <span className="profile-hero__badge">
+                <GraduationCap size={14} aria-hidden />
+                Student
+              </span>
+            </>
+          ) : (
+            <>
+              <p className="profile-hero__line">
+                {profile?.subject?.trim() || "Subjects not set"}
+              </p>
+              <p className="profile-hero__line profile-hero__line--muted">
+                {profile?.department
+                  ? `${profile.department} · Faculty`
+                  : "Faculty staff"}
+              </p>
+              <span className="profile-hero__badge profile-hero__badge--faculty">
+                <Briefcase size={14} aria-hidden />
+                Teacher
+              </span>
+            </>
+          )}
+          <button type="button" className="profile-hero__photo-btn">
+            Change photo
+          </button>
+
+          <div className="profile-hero__divider">
+            <div className="profile-hero__contact">
+              <div className="profile-hero__contact-icon">
+                <Mail size={18} strokeWidth={2} />
+              </div>
+              <div>
+                <p className="profile-hero__contact-label">Email</p>
+                <p className="profile-hero__contact-value">
+                  {profile?.email ?? "—"}
+                </p>
+              </div>
+            </div>
+            <div className="profile-hero__contact">
+              <div className="profile-hero__contact-icon">
+                <Phone size={18} strokeWidth={2} />
+              </div>
+              <div>
+                <p className="profile-hero__contact-label">Phone</p>
+                <p className="profile-hero__contact-value">
+                  {formatPhone(profile?.phone)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          <section className="premium-card profile-section">
+            <div className="profile-section__head">
+              <div className="profile-section__icon">
+                <UserRound size={22} strokeWidth={1.75} />
+              </div>
+              <div className="profile-section__titles">
+                <h3>Personal information</h3>
+                <p>
+                  Name and phone can be edited. Email is managed by your school
+                  administrator.
+                </p>
+              </div>
+            </div>
+            <div className="profile-section__grid">
+              <div>
+                <label className="profile-label" htmlFor="profile-first">
+                  First name
+                </label>
+                <input
+                  id="profile-first"
+                  className="profile-input"
+                  value={getFirstName()}
+                  onChange={(e) => {
+                    const lastName = getLastName();
+                    setProfile({
+                      ...profile,
+                      firstName: e.target.value,
+                      lastName: lastName,
+                      name: `${e.target.value} ${lastName}`.trim(),
+                    });
+                  }}
+                  autoComplete="given-name"
+                />
+              </div>
+              <div>
+                <label className="profile-label" htmlFor="profile-last">
+                  Last name
+                </label>
+                <input
+                  id="profile-last"
+                  className="profile-input"
+                  value={getLastName()}
+                  onChange={(e) => {
+                    const firstName = getFirstName();
+                    setProfile({
+                      ...profile,
+                      lastName: e.target.value,
+                      firstName: firstName,
+                      name: `${firstName} ${e.target.value}`.trim(),
+                    });
+                  }}
+                  autoComplete="family-name"
+                />
+              </div>
+              <div className="profile-field--full">
+                <label className="profile-label" htmlFor="profile-email">
+                  Email
+                </label>
+                <input
+                  id="profile-email"
+                  className="profile-input"
+                  value={profile?.email || ""}
+                  disabled
+                  aria-readonly="true"
+                />
+              </div>
+              <div className="profile-field--full">
+                <label className="profile-label" htmlFor="profile-phone">
+                  Phone
+                </label>
+                <input
+                  id="profile-phone"
+                  className="profile-input"
+                  value={profile?.phone || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, phone: e.target.value })
+                  }
+                  placeholder="e.g. 98765 43210"
+                  autoComplete="tel"
+                />
+              </div>
+            </div>
+          </section>
+
+          {!isStudent && (
+            <section className="premium-card profile-section">
+              <div className="profile-section__head">
+                <div className="profile-section__icon profile-section__icon--pro">
+                  <Briefcase size={22} strokeWidth={1.75} />
+                </div>
+                <div className="profile-section__titles">
+                  <h3>Professional information</h3>
+                  <p>Subjects and department shown on your school profile.</p>
+                </div>
+              </div>
+              <div className="profile-section__grid">
+                <div>
+                  <label className="profile-label" htmlFor="profile-subject">
+                    Subject
+                  </label>
+                  <input
+                    id="profile-subject"
+                    className="profile-input"
+                    value={profile?.subject || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, subject: e.target.value })
+                    }
+                    placeholder="e.g. Mathematics, Physics"
+                  />
+                </div>
+                <div>
+                  <label className="profile-label" htmlFor="profile-dept">
+                    Department
+                  </label>
+                  <input
+                    id="profile-dept"
+                    className="profile-input"
+                    value={profile?.department || ""}
+                    onChange={(e) =>
+                      setProfile({ ...profile, department: e.target.value })
+                    }
+                    placeholder="e.g. Science"
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+
+          <div className="profile-actions">
+            <button
+              type="button"
+              className="profile-btn profile-btn--secondary"
+              onClick={() => fetchProfile({ silent: true })}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleProfileUpdate}
+              className="profile-btn profile-btn--primary"
+              disabled={saving}
+            >
+              <Save size={18} strokeWidth={2} aria-hidden />
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Profile;

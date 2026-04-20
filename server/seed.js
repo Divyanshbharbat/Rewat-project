@@ -98,7 +98,7 @@ const seedDB = async () => {
 
     console.log("Student record created and linked to user");
 
-    // Create Classes
+    // Create Classes (linked to teacher + realistic weekly patterns)
     const class1 = await Class.create({
       className: "Mathematics",
       section: "10-A",
@@ -106,6 +106,9 @@ const seedDB = async () => {
       capacity: 30,
       subjects: ["Calculus", "Algebra"],
       students: [studentRecord._id],
+      teacher: teacher._id,
+      schedule: "8:30 AM — 9:45 AM",
+      weekdays: ["Monday", "Wednesday", "Friday"],
     });
 
     const class2 = await Class.create({
@@ -114,8 +117,13 @@ const seedDB = async () => {
       roomNumber: "305",
       capacity: 30,
       subjects: ["Mechanics", "Thermodynamics"],
-      students: [studentRecord._id],
+      students: [],
+      teacher: teacher._id,
+      schedule: "10:00 AM — 11:15 AM",
+      weekdays: ["Tuesday", "Thursday"],
     });
+
+    await Student.findByIdAndUpdate(studentRecord._id, { class: class1._id });
 
     // Add Activities
     await Activity.create([
@@ -128,17 +136,25 @@ const seedDB = async () => {
       { title: "Class Created", detail: "Mathematics 101", type: "class" },
     ]);
 
-    // Add Events
+    // Add Events (dates relative to seed run so they stay "upcoming")
+    const ev1 = new Date();
+    ev1.setDate(ev1.getDate() + 10);
+    ev1.setHours(10, 0, 0, 0);
+    const ev2 = new Date();
+    ev2.setDate(ev2.getDate() + 24);
+    ev2.setHours(9, 0, 0, 0);
     await Event.create([
       {
         title: "Parent-Teacher Meeting",
-        date: new Date("2026-01-28T10:00:00"),
+        date: ev1,
         location: "Hall A",
+        description: "All parents welcome. Schedule slots via office.",
       },
       {
         title: "Annual Sports Day",
-        date: new Date("2026-02-05T09:00:00"),
-        location: "Field 1",
+        date: ev2,
+        location: "Main field",
+        description: "House colours and schedule posted on notice boards.",
       },
     ]);
 

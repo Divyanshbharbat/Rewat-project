@@ -8,7 +8,14 @@ const classSchema = new mongoose.Schema({
     roomNumber: { type: String },
     capacity: { type: Number },
     subjects: [{ type: String }],
-    students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }]
+    students: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }],
+    /** Time range shown on timetables, e.g. "9:00 AM - 10:30 AM" */
+    schedule: { type: String, default: '9:00 AM - 10:30 AM' },
+    /** Which weekdays this class meets (names must match UI ordering) */
+    weekdays: {
+        type: [String],
+        default: () => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    },
 }, { timestamps: true });
 
 // prevent duplicate class-section combos

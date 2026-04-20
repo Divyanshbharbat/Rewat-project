@@ -1,0 +1,9 @@
+firstName,lastName,email,phone,gender,dateOfBirth,class,department,address
+Priya,Singh,priya.singh2024@example.com,9876543211,Female,07/22/2008,2,python,456 Maple Avenue
+Neha,Patel,neha.patel2024@example.com,9876543213,Female,02/14/2008,2,java,321 Pine Lane
+Divya,Gupta,divya.gupta2024@example.com,9876543215,Female,04/18/2008,2,c++,987 Birch Street
+Anjali,Nair,anjali.nair2024@example.com,9876543217,Female,01/10/2009,2,web,222 Willow Street
+Sneha,Desai,sneha.desai2024@example.com,9876543219,Female,08/28/2008,2,c,444 Ash Street
+Pooja,Singh,pooja.singh2024@example.com,9876543221,Female,10/19/2008,2,app,666 Maple Road
+Riya,Chopra,riya.chopra2024@example.com,9876543223,Female,06/09/2008,2,python,888 Cedar Drive
+Ananya,Saxena,ananya.saxena2024@example.com,9876543225,Female,03/21/2009,2,java,1010 Spruce Street

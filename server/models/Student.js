@@ -12,7 +12,7 @@ const studentSchema = new mongoose.Schema(
     lastName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String },
-    dateOfBirth: { type: Date },
+    dateOfBirth: { type: String },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
     address: { type: String },
     class: { type: mongoose.Schema.Types.ObjectId, ref: "Class" },
@@ -30,6 +30,7 @@ const studentSchema = new mongoose.Schema(
     admissionDate: { type: Date, default: Date.now },
     profilePhoto: { type: String },
     attendance: { type: Number, default: 0 },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

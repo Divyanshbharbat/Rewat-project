@@ -58,7 +58,12 @@ const Teachers = () => {
         toast.success("Teacher updated successfully");
       } else {
         await API.post("/teachers", values);
-        toast.success("Teacher added successfully");
+        // Show login credentials for new teacher
+        const loginPassword = values.password || values.phone;
+        toast.success(
+          `Teacher added! 📧 Email: ${values.email} | 🔑 Password: ${loginPassword}`,
+          { duration: 6000 },
+        );
       }
       setIsModalOpen(false);
       fetchData();
@@ -107,28 +112,29 @@ const Teachers = () => {
         </div>
       ),
     },
-    { header: "Subject", accessor: "subject" },
     { header: "Department", accessor: "department" },
     { header: "Phone", accessor: "phone" },
   ];
 
   const formFields = [
-    { name: "teacherId", label: "Teacher ID", required: true },
+    { name: "teacherId", label: "Teacher ID", required: true, prefix: "TEACH" },
     { name: "name", label: "Full Name", required: true },
     { name: "email", label: "Email", type: "email", required: true },
     { name: "phone", label: "Phone Number" },
-    { name: "subject", label: "Subject", required: true },
     { name: "department", label: "Department" },
     { name: "joiningDate", label: "Joining Date", type: "date" },
     { name: "address", label: "Address" },
+    {
+      name: "password",
+      label: "Login Password (leave empty to use phone number)",
+      type: "password",
+    },
   ];
 
   const filteredTeachers = teachers.filter(
     (t) =>
       (t.name && t.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (t.teacherId && t.teacherId.includes(searchQuery)) ||
-      (t.subject &&
-        t.subject.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (t.email && t.email.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 

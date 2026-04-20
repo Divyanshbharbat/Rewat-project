@@ -68,3 +68,14 @@ input {
 .auth-gradient {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
+
+/* Modal animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}

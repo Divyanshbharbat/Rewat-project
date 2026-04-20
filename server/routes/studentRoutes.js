@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/authMiddleware');
 const Student = require('../models/Student');
+const User = require('../models/User');
 const Class = require('../models/Class');
 const Assignment = require('../models/Assignment');
 const Attendance = require('../models/Attendance');
@@ -44,7 +45,7 @@ router.get('/dashboard', protect, authorize('student'), async (req, res) => {
         }
 
         const classId = studentRecord.class;
-        const studentClass = classId ? await Class.findById(classId) : null;
+        const studentClass = classId ? await Class.findById(classId).populate('teacher', 'name') : null;
         const classesCount = studentClass ? 1 : 0;
         
         const assignments = classId ? await Assignment.find({ classId }).sort({ dueDate: 1 }) : [];
@@ -66,11 +67,17 @@ router.get('/dashboard', protect, authorize('student'), async (req, res) => {
                 dueDate: a.dueDate,
                 priority: a.priority || 'medium'
             })),
-            schedule: studentClass ? [{
-                subject: studentClass.className,
-                time: studentClass.schedule || '9:00 AM - 10:30 AM',
-                date: 'Today'
-            }] : []
+            schedule: studentClass
+                ? [
+                      {
+                          subject: studentClass.className,
+                          time: studentClass.schedule || '9:00 AM - 10:30 AM',
+                          room: studentClass.roomNumber || 'TBD',
+                          teacher: studentClass.teacher?.name || 'Assigned soon',
+                          date: 'Today',
+                      },
+                  ]
+                : [],
         });
     } catch (error) {
         console.error('Student Dashboard Error:', error);
@@ -98,6 +105,42 @@ router.get('/profile', protect, authorize('student'), async (req, res) => {
     }
 });
 
+// @desc    Update Student profile
+// @route   PUT /api/student/profile
+// @access  Private/Student
+router.put('/profile', protect, authorize('student'), async (req, res) => {
+    try {
+        const student = await Student.findOne({
+            $or: [
+                { userId: req.user._id },
+                { email: req.user.email }
+            ]
+        });
+        if (!student) {
+            return res.status(404).json({ message: 'Student profile not found' });
+        }
+        const { firstName, lastName, phone } = req.body;
+        if (firstName !== undefined && firstName !== '') student.firstName = firstName;
+        if (lastName !== undefined && lastName !== '') student.lastName = lastName;
+        if (phone !== undefined) student.phone = phone;
+        await student.save();
+
+        const user = await User.findById(req.user._id);
+        if (user && (firstName !== undefined || lastName !== undefined)) {
+            const fn = student.firstName || '';
+            const ln = student.lastName || '';
+            const full = `${fn} ${ln}`.trim();
+            if (full) user.name = full;
+            await user.save();
+        }
+
+        const updated = await Student.findById(student._id).populate('class');
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 // @desc    Get Student schedule
 // @route   GET /api/student/schedule
 // @access  Private/Student
@@ -113,21 +156,44 @@ router.get('/schedule', protect, authorize('student'), async (req, res) => {
             return res.status(404).json({ message: 'Student record not found' });
         }
         
+        const defaultWeekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
         if (!studentRecord.class) {
-            return res.json([]);
+            return res.json({
+                slots: [],
+                context: {
+                    homeroom: '',
+                    subline: 'You are not assigned to a class yet.',
+                },
+            });
         }
 
         const classes = await Class.find({ _id: studentRecord.class }).populate('teacher', 'name');
-        const schedule = classes.map(c => ({
-            id: c._id,
-            subject: c.className,
-            class: `${c.className}-${c.section}`,
-            teacher: c.teacher?.name || 'Assigned soon',
-            time: c.schedule || '9:00 AM - 10:30 AM',
-            room: c.roomNumber || 'TBD',
-            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-        }));
-        res.json(schedule);
+        const slots = classes.map((c) => {
+            const subs = c.subjects || [];
+            const subtitle = subs.length ? subs.join(' · ') : 'General';
+            const weekdays =
+                Array.isArray(c.weekdays) && c.weekdays.length ? c.weekdays : defaultWeekdays;
+            return {
+                id: c._id,
+                title: c.className,
+                subtitle,
+                section: c.section,
+                classLabel: `${c.className} — ${c.section}`,
+                time: c.schedule || '9:00 AM - 10:30 AM',
+                room: c.roomNumber || 'TBD',
+                weekdays,
+                teacherName: c.teacher?.name || 'Assigned soon',
+            };
+        });
+
+        res.json({
+            slots,
+            context: {
+                homeroom: slots.length ? slots[0].classLabel : '',
+                subline: 'Your weekly class meetings',
+            },
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }

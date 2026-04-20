@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Save, School, MapPin, Mail, Phone } from "lucide-react";
 import API from "../../services/api";
 import { Toaster, toast } from "react-hot-toast";
+import { useSchoolSettings } from "../../context/SchoolSettingsContext";
+import "./Settings.css";
 
 const Settings = () => {
+  const { refreshSchoolSettings } = useSchoolSettings();
   const [settings, setSettings] = useState({
     schoolName: "",
-    schoolLogo: "",
     address: "",
     contactEmail: "",
     contactPhone: "",
@@ -14,18 +16,14 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async (opts = {}) => {
+    const silent = Boolean(opts.silent);
+    if (!silent) setLoading(true);
     try {
-      setLoading(true);
       const response = await API.get("/settings");
       if (response.data) {
         setSettings({
           schoolName: response.data.schoolName || "",
-          schoolLogo: response.data.schoolLogo || "",
           address: response.data.address || "",
           contactEmail: response.data.contactEmail || "",
           contactPhone: response.data.contactPhone || "",
@@ -34,9 +32,13 @@ const Settings = () => {
     } catch (error) {
       toast.error("Failed to load settings");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,7 +52,13 @@ const Settings = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      await API.put("/settings", settings);
+      await API.put("/settings", {
+        schoolName: settings.schoolName,
+        address: settings.address,
+        contactEmail: settings.contactEmail,
+        contactPhone: settings.contactPhone,
+      });
+      await refreshSchoolSettings();
       toast.success("Settings updated successfully");
     } catch (error) {
       toast.error("Failed to update settings");
@@ -61,285 +69,152 @@ const Settings = () => {
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: "40px",
-          textAlign: "center",
-          color: "var(--text-muted)",
-        }}
-      >
-        Loading settings...
+      <div className="admin-settings">
+        <Toaster position="top-right" />
+        <div className="premium-card admin-settings-loading">
+          <div className="admin-settings-loading__spinner" aria-hidden />
+          <p>Loading system settings…</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="admin-settings">
       <Toaster position="top-right" />
-      <div style={{ marginBottom: "30px" }}>
-        <h1 style={{ fontSize: "28px", marginBottom: "8px" }}>
-          System Settings
-        </h1>
-        <p style={{ color: "var(--text-muted)" }}>
-          Manage your school's global information and configuration.
+      <header className="admin-settings__header">
+        <p className="admin-settings__eyebrow">Administration</p>
+        <h1 className="admin-settings__title">System settings</h1>
+        <p className="admin-settings__subtitle">
+          School-wide details used across reports, headers, and contact
+          information. Changes apply after you save.
         </p>
-      </div>
+      </header>
 
-      <div className="premium-card" style={{ maxWidth: "800px" }}>
-        <h2
-          style={{
-            fontSize: "18px",
-            fontWeight: "600",
-            marginBottom: "24px",
-            paddingBottom: "16px",
-            borderBottom: "1px solid var(--border-color)",
-          }}
-        >
-          School Information
-        </h2>
+      <form className="admin-settings__stack" onSubmit={handleSubmit}>
+        <section className="admin-settings-section">
+          <div className="premium-card">
+            <div className="admin-settings-section__head">
+              <div className="admin-settings-section__icon">
+                <School size={22} strokeWidth={1.75} />
+              </div>
+              <div className="admin-settings-section__titles">
+                <h2>School identity</h2>
+                <p>Official name shown in the app sidebar and reports.</p>
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "24px" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
+            <div className="admin-settings-grid">
+              <div className="admin-settings-field--full">
+                <label className="admin-settings-label" htmlFor="schoolName">
+                  <School size={14} aria-hidden />
+                  School name
+                </label>
+                <input
+                  id="schoolName"
+                  type="text"
+                  name="schoolName"
+                  className="admin-settings-input"
+                  value={settings.schoolName}
+                  onChange={handleChange}
+                  required
+                  autoComplete="organization"
+                  placeholder="e.g. Riverside High School"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-settings-section">
+          <div className="premium-card">
+            <div className="admin-settings-section__head">
+              <div className="admin-settings-section__icon admin-settings-section__icon--contact">
+                <MapPin size={22} strokeWidth={1.75} />
+              </div>
+              <div className="admin-settings-section__titles">
+                <h2>Location &amp; contact</h2>
+                <p>Address and how parents or staff can reach the office.</p>
+              </div>
+            </div>
+
+            <div className="admin-settings-grid">
+              <div className="admin-settings-field--full">
+                <label className="admin-settings-label" htmlFor="address">
+                  <MapPin size={14} aria-hidden />
+                  Full address
+                </label>
+                <textarea
+                  id="address"
+                  name="address"
+                  className="admin-settings-input admin-settings-textarea"
+                  value={settings.address}
+                  onChange={handleChange}
+                  rows={3}
+                  placeholder="Street, city, state / region, postal code"
+                />
+              </div>
+              <div>
+                <label
+                  className="admin-settings-label"
+                  htmlFor="contactEmail"
+                >
+                  <Mail size={14} aria-hidden />
+                  Contact email
+                </label>
+                <input
+                  id="contactEmail"
+                  type="email"
+                  name="contactEmail"
+                  className="admin-settings-input"
+                  value={settings.contactEmail}
+                  onChange={handleChange}
+                  autoComplete="email"
+                  placeholder="office@school.edu"
+                />
+              </div>
+              <div>
+                <label
+                  className="admin-settings-label"
+                  htmlFor="contactPhone"
+                >
+                  <Phone size={14} aria-hidden />
+                  Contact phone
+                </label>
+                <input
+                  id="contactPhone"
+                  type="tel"
+                  name="contactPhone"
+                  className="admin-settings-input"
+                  value={settings.contactPhone}
+                  onChange={handleChange}
+                  autoComplete="tel"
+                  placeholder="Main office line"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="admin-settings-actions">
+          <button
+            type="button"
+            className="admin-settings-btn admin-settings-btn--secondary"
+            disabled={saving}
+            onClick={() => fetchSettings({ silent: true })}
           >
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
-              <label
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  color: "var(--text-main)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <School size={14} /> School Name
-              </label>
-              <input
-                type="text"
-                name="schoolName"
-                value={settings.schoolName}
-                onChange={handleChange}
-                required
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--border-color)",
-                  fontSize: "14px",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "var(--primary-color)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "var(--border-color)")
-                }
-              />
-            </div>
-
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
-              <label
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  color: "var(--text-main)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                School Logo URL
-              </label>
-              <input
-                type="text"
-                name="schoolLogo"
-                value={settings.schoolLogo}
-                onChange={handleChange}
-                placeholder="https://example.com/logo.png"
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--border-color)",
-                  fontSize: "14px",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "var(--primary-color)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "var(--border-color)")
-                }
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <label
-              style={{
-                fontSize: "13px",
-                fontWeight: "500",
-                color: "var(--text-main)",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
-            >
-              <MapPin size={14} /> Full Address
-            </label>
-            <textarea
-              name="address"
-              value={settings.address}
-              onChange={handleChange}
-              rows={3}
-              style={{
-                padding: "12px 14px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--border-color)",
-                fontSize: "14px",
-                outline: "none",
-                transition: "border-color 0.2s",
-                resize: "vertical",
-              }}
-              onFocus={(e) =>
-                (e.target.style.borderColor = "var(--primary-color)")
-              }
-              onBlur={(e) =>
-                (e.target.style.borderColor = "var(--border-color)")
-              }
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
+            Reset
+          </button>
+          <button
+            type="submit"
+            className="admin-settings-btn admin-settings-btn--primary"
+            disabled={saving}
           >
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
-              <label
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  color: "var(--text-main)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <Mail size={14} /> Contact Email
-              </label>
-              <input
-                type="email"
-                name="contactEmail"
-                value={settings.contactEmail}
-                onChange={handleChange}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--border-color)",
-                  fontSize: "14px",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "var(--primary-color)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "var(--border-color)")
-                }
-              />
-            </div>
-
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-            >
-              <label
-                style={{
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  color: "var(--text-main)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <Phone size={14} /> Contact Phone
-              </label>
-              <input
-                type="text"
-                name="contactPhone"
-                value={settings.contactPhone}
-                onChange={handleChange}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-md)",
-                  border: "1px solid var(--border-color)",
-                  fontSize: "14px",
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "var(--primary-color)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "var(--border-color)")
-                }
-              />
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: "10px",
-            }}
-          >
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: "12px 24px",
-                backgroundColor: "var(--primary-color)",
-                color: "white",
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
-                fontWeight: "600",
-                border: "none",
-                cursor: saving ? "not-allowed" : "pointer",
-                transition: "background-color 0.2s",
-                opacity: saving ? 0.7 : 1,
-              }}
-              onMouseEnter={(e) =>
-                !saving && (e.target.style.backgroundColor = "#1d4ed8")
-              }
-              onMouseLeave={(e) =>
-                !saving &&
-                (e.target.style.backgroundColor = "var(--primary-color)")
-              }
-            >
-              <Save size={18} />
-              {saving ? "Saving..." : "Save Settings"}
-            </button>
-          </div>
-        </form>
-      </div>
+            <Save size={18} strokeWidth={2} aria-hidden />
+            {saving ? "Saving…" : "Save settings"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

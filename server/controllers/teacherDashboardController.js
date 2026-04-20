@@ -122,9 +122,58 @@ const getTeacherDashboard = async (req, res) => {
     }
 };
 
+const DEFAULT_WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+const getTeacherSchedule = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        let classes = await Class.find({ teacher: userId }).populate('students', 'firstName lastName');
+
+        if (classes.length === 0) {
+            const teacherProfile = await Teacher.findOne({ email: req.user.email });
+            if (teacherProfile) {
+                classes = await Class.find({ classTeacher: teacherProfile._id }).populate(
+                    'students',
+                    'firstName lastName',
+                );
+            }
+        }
+
+        const slots = classes.map((c) => {
+            const subs = c.subjects || [];
+            const subtitle = subs.length ? subs.join(' · ') : 'General';
+            const weekdays =
+                Array.isArray(c.weekdays) && c.weekdays.length ? c.weekdays : DEFAULT_WEEKDAYS;
+            return {
+                id: c._id,
+                title: c.className,
+                subtitle,
+                section: c.section,
+                classLabel: `${c.className} — ${c.section}`,
+                time: c.schedule || '9:00 AM - 10:30 AM',
+                room: c.roomNumber || 'TBD',
+                weekdays,
+                studentCount: Array.isArray(c.students) ? c.students.length : 0,
+            };
+        });
+
+        res.json({
+            slots,
+            context: {
+                role: 'teacher',
+                headline: 'Teaching schedule',
+                subline: 'Classes you instruct this term',
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getTeacherClasses,
     getTeacherProfile,
     updateTeacherProfile,
-    getTeacherDashboard
+    getTeacherDashboard,
+    getTeacherSchedule,
 };

@@ -53,11 +53,21 @@ const Events = () => {
 
   const handleSubmit = async (values) => {
     try {
+      const payload = {
+        title: (values.title || "").trim(),
+        location: (values.location || "").trim(),
+        description: (values.description || "").trim(),
+        date: values.date ? new Date(values.date).toISOString() : undefined,
+      };
+      if (!payload.title || !payload.date) {
+        toast.error("Title and date are required");
+        return;
+      }
       if (currentEvent) {
-        await api.put(`/admin/events/${currentEvent._id}`, values);
+        await API.put(`/admin/events/${currentEvent._id}`, payload);
         toast.success("Event updated successfully");
       } else {
-        await api.post("/admin/events", values);
+        await API.post("/admin/events", payload);
         toast.success("Event added successfully");
       }
       setIsModalOpen(false);
@@ -97,8 +107,14 @@ const Events = () => {
       type: "datetime-local",
       required: true,
     },
-    { name: "location", label: "Location", required: true },
-    { name: "description", label: "Description", type: "textarea" },
+    { name: "location", label: "Location", required: false },
+    {
+      name: "description",
+      label: "Description",
+      type: "textarea",
+      required: false,
+      fullWidth: true,
+    },
   ];
 
   const filteredEvents = events.filter(
@@ -222,12 +238,17 @@ const Events = () => {
         title={currentEvent ? "Edit Event" : "Create New Event"}
       >
         <Form
+          key={currentEvent?._id || "new-event"}
           fields={formFields}
           initialValues={
             currentEvent
               ? {
-                  ...currentEvent,
-                  date: new Date(currentEvent.date).toISOString().slice(0, 16),
+                  title: currentEvent.title || "",
+                  location: currentEvent.location || "",
+                  description: currentEvent.description || "",
+                  date: new Date(currentEvent.date)
+                    .toISOString()
+                    .slice(0, 16),
                 }
               : {}
           }

@@ -85,10 +85,10 @@ const Classes = () => {
       }
 
       if (currentClass) {
-        await api.put(`/classes/${currentClass._id}`, submitValues);
+        await API.put(`/classes/${currentClass._id}`, submitValues);
         toast.success("Class updated successfully");
       } else {
-        await api.post("/classes", submitValues);
+        await API.post("/classes", submitValues);
         toast.success("Class created successfully");
       }
       setIsModalOpen(false);
