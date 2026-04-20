@@ -29,6 +29,8 @@ import Settings from "./pages/Settings/Settings";
 import Events from "./pages/Events/Events";
 import SchoolEvents from "./pages/Events/SchoolEvents";
 import AdminApplications from "./pages/AdminDashboard/Applications";
+import ChatbotKey from "./pages/Chatbot/ChatbotKey";
+import ChatbotWidget from "./components/ChatbotWidget";
 
 import MyClasses from "./pages/MyClasses/MyClasses";
 
@@ -54,6 +56,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
       >
         {children}
       </main>
+      <ChatbotWidget />
     </div>
   );
 };
@@ -139,6 +142,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <AdminApplications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/chatbot-key"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <ChatbotKey />
                 </ProtectedRoute>
               }
             />

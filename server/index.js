@@ -39,6 +39,9 @@ app.use("/api/events", require("./routes/eventRoutes.js"));
 
 // Applications Routes
 app.use("/api/applications", require("./routes/applicationRoutes.js"));
+// Chatbot Routes
+app.use("/api/chatbot", require("./routes/chatbotRoutes.js"));
+
 app.get("/", (req, res) => {
   res.send("SchoolERP API is running...");
 });

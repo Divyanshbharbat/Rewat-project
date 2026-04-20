@@ -5,7 +5,8 @@ const settingsSchema = new mongoose.Schema({
     schoolLogo: { type: String },
     address: { type: String },
     contactEmail: { type: String },
-    contactPhone: { type: String }
+    contactPhone: { type: String },
+    geminiApiKey: { type: String, default: 'AIzaSyB921tjUJ_We3ZjsXIfTkPq2gc7AkmVKEg' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Settings', settingsSchema);

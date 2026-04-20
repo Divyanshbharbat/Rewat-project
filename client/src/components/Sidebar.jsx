@@ -15,6 +15,8 @@ import {
   MessageSquare,
   UserCircle,
   FileText,
+  Sparkles,
+  Key,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSchoolSettings } from "../context/SchoolSettingsContext";
@@ -90,6 +92,11 @@ const Sidebar = ({ role }) => {
         icon: <FileText size={20} />,
         label: "Applications",
         path: "/admin/applications",
+      },
+      {
+        icon: <Key size={20} />,
+        label: "Chatbot Key",
+        path: "/admin/chatbot-key",
       },
       {
         icon: <Settings size={20} />,

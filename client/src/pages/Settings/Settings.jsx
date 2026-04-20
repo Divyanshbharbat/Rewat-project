@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Save, School, MapPin, Mail, Phone } from "lucide-react";
+import { Save, School, MapPin, Mail, Phone, Key, Eye, EyeOff } from "lucide-react";
 import API from "../../services/api";
 import { Toaster, toast } from "react-hot-toast";
 import { useSchoolSettings } from "../../context/SchoolSettingsContext";
@@ -12,7 +12,9 @@ const Settings = () => {
     address: "",
     contactEmail: "",
     contactPhone: "",
+    geminiApiKey: "",
   });
+  const [showApiKey, setShowApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +29,7 @@ const Settings = () => {
           address: response.data.address || "",
           contactEmail: response.data.contactEmail || "",
           contactPhone: response.data.contactPhone || "",
+          geminiApiKey: response.data.geminiApiKey || "",
         });
       }
     } catch (error) {
@@ -57,6 +60,7 @@ const Settings = () => {
         address: settings.address,
         contactEmail: settings.contactEmail,
         contactPhone: settings.contactPhone,
+        geminiApiKey: settings.geminiApiKey,
       });
       await refreshSchoolSettings();
       toast.success("Settings updated successfully");
@@ -191,6 +195,62 @@ const Settings = () => {
                   autoComplete="tel"
                   placeholder="Main office line"
                 />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-settings-section">
+          <div className="premium-card">
+            <div className="admin-settings-section__head">
+              <div className="admin-settings-section__icon" style={{ backgroundColor: "#fef3c7", color: "#d97706" }}>
+                <Key size={22} strokeWidth={1.75} />
+              </div>
+              <div className="admin-settings-section__titles">
+                <h2>AI Assistance Configuration</h2>
+                <p>Manage the API key for the school's AI chatbot assistant.</p>
+              </div>
+            </div>
+
+            <div className="admin-settings-grid">
+              <div className="admin-settings-field--full">
+                <label className="admin-settings-label" htmlFor="geminiApiKey">
+                  <Key size={14} aria-hidden />
+                  Google Gemini API Key
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="geminiApiKey"
+                    type={showApiKey ? "text" : "password"}
+                    name="geminiApiKey"
+                    className="admin-settings-input"
+                    value={settings.geminiApiKey}
+                    onChange={handleChange}
+                    placeholder="AIzaSy..."
+                    style={{ paddingRight: "45px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "var(--text-muted)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
+                  Used to power the AI Assistant widget in the bottom corner.
+                </p>
               </div>
             </div>
           </div>
